@@ -1,0 +1,5 @@
+*.bin
+*.out
+*.json
+*.asc
+*.dblite

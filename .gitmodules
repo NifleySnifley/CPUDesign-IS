@@ -1,0 +1,3 @@
+[submodule "relearning/iceFUN"]
+	path = relearning/iceFUN
+	url = https://github.com/devantech/iceFUN
