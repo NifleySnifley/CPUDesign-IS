@@ -42,28 +42,23 @@
 
 #define BITS_32 0b11111111111111111111111111111111
 
-#define TRACE_INSTR(pc, name) printf("Instruction @ pc=%x: %s\n", pc, name);
+typedef void (*rv_sim_instr_trace_fn_t) (void*, const char*);
+typedef void (*rv_sim_cond_trace_fn_t) (void*, bool);
+typedef void (*rv_sim_err_trace_fn_t) (void*);
+// Read a single uint8_t at address (uint32_t)
+typedef uint8_t(*rv_sim_read_fn_t) (void*, uint32_t);
+// Write a single value (uint8_t) to address (uint32_t)
+typedef void (*rv_sim_write_fn_t) (void*, uint32_t, uint8_t);
+typedef void (*rv_sim_breakpoint_fn_t) (void*);
+typedef void (*rv_sim_syscall_fn_t) (void*);
 
-#ifndef TRACE_INSTR
-#define TRACE_INSTR(pc, name)
-#endif
 
-// #define TRACE_MEM_WRITE(addr, v) printf("W %x @ %x\n", v, addr);
+//printf("Instruction @ pc=%x: %s\n", simptr->pc, name);
+#define TRACE_INSTR(simptr, name) if (simptr->instr_trace != NULL) {(simptr->instr_trace)((void*)simptr, name);}
+#define TRACE_COND(simptr, bval) if (simptr->cond_trace != NULL) {(simptr->cond_trace)((void*)simptr, bval);}
+#define TRACE_ERROR(simptr) if (simptr->err_trace != NULL) {(simptr->err_trace)((void*)simptr);}
 
-#ifndef TRACE_MEM_WRITE
-#define TRACE_MEM_WRITE(addr, v)
-#endif
-
-#define TRACE_COND(bval)
-
-#define TRACE_ERROR(simptr) rv_simulator_print_regs(simptr);
-
-#ifndef TRACE_ERROR
-#define TRACE_ERROR(simptr)
-#endif
-
-// #define TRACE_ARGUMENTS(src1, src2, dest, imm) printf("Arguments: rs1:%d, rs2:%d, rd:%d, imm:%d\n", src1, src2, dest, imm);
-
+// TODO: Move this to a proper hook function
 #ifndef TRACE_ARGUMENTS
 #define TRACE_ARGUMENTS(src1, src2, dest, imm)
 #endif
@@ -75,6 +70,17 @@ typedef struct rv_simulator_t {
     // Do bounds check
     uint32_t mem_size;
     uint8_t* memory;
+
+    // Hook & trace functions
+    rv_sim_instr_trace_fn_t instr_trace;
+    rv_sim_cond_trace_fn_t cond_trace;
+    rv_sim_err_trace_fn_t err_trace;
+
+    rv_sim_read_fn_t read_fn;
+    rv_sim_write_fn_t write_fn;
+
+    rv_sim_breakpoint_fn_t bkpt_fn;
+    rv_sim_syscall_fn_t scall_fn;
 } rv_simulator_t;
 
 // Returns -1 on breakpoint, -2 on syscall, >0 on error
@@ -87,8 +93,14 @@ void rv_simulator_deinit(rv_simulator_t* sim);
 
 void rv_simulator_print_regs(rv_simulator_t* sim);
 
-void rv_simulator_dump_regs(rv_simulator_t* sim, const char* reg_filename);
-void rv_simulator_dump_memory(rv_simulator_t* sim, const char* mem_filename);
+int rv_simulator_dump_regs(rv_simulator_t* sim, FILE* file);
+int rv_simulator_dump_memory(rv_simulator_t* sim, FILE* file);
+
+void rv_simulator_pprint_memory(rv_simulator_t* sim);
+void rv_simulator_pprint_registers(rv_simulator_t* sim);
+
+uint8_t rv_simulator_default_read(void* sim, uint32_t addr);
+void rv_simulator_default_write(void* sim, uint32_t addr, uint8_t data);
 
 
 #endif
