@@ -3,6 +3,42 @@
 #include "rv32i_simulator.h"
 #include <memory.h>
 #include <stdlib.h>
+#include <unistd.h>
+
+const char* REG_ABI_NAMES[32] = {
+    "zero",
+    "ra",
+    "sp",
+    "gp",
+    "tp",
+    "t0",
+    "t1",
+    "t2",
+    "s0/fp",
+    "s1",
+    "a0",
+    "a1",
+    "a2",
+    "a3",
+    "a4",
+    "a5",
+    "a6",
+    "a7",
+    "s2",
+    "s3",
+    "s4",
+    "s5",
+    "s6",
+    "s7",
+    "s8",
+    "s9",
+    "s10",
+    "s11",
+    "t3",
+    "t4",
+    "t5",
+    "t6"
+};
 
 uint32_t signext(uint32_t num, int n_bits) {
     return num | (num & (1 << (n_bits - 1)) ? (BITS_32 << n_bits) : 0);
@@ -399,7 +435,7 @@ int rv_simulator_dump_regs(rv_simulator_t* sim, FILE* regfile) {
     fprintf(regfile, "arch_name,abi_name,value\n");
 
     for (int r = 0; r < 32; ++r) {
-        fprintf(regfile, "x%d,WIP,%d\n", r, sim->x[r]);
+        fprintf(regfile, "x%d,%s,%d\n", r, REG_ABI_NAMES[r], sim->x[r]);
     }
     fflush(regfile);
     return 0;
@@ -413,13 +449,18 @@ int rv_simulator_dump_memory(rv_simulator_t* sim, FILE* memfile) {
 }
 
 void rv_simulator_pprint_memory(rv_simulator_t* sim) {
-    // TODO: Implement!
+    // Use 'hd' to do a nice hexdump! (pipe memory to hd)
+
+    FILE* hd_proc = popen("hd", "w");
+    fwrite(sim->memory, 1, sim->mem_size, hd_proc);
+    fflush(hd_proc);
+    int status = pclose(hd_proc);
 }
 
 void rv_simulator_pprint_registers(rv_simulator_t* sim) {
     printf("Registers:\n");
     for (int r = 0; r < 32; ++r) {
-        printf("\t\x1b[31mx%d\x1b[0m = \x1b[32m%d\x1b[0m (0x%x)\n", r, (int32_t)sim->x[r], sim->x[r]);
+        printf("\t\x1b[31mx%d\x1b[0m/%s = \x1b[32m%d\x1b[0m (0x%x)\n", r, REG_ABI_NAMES[r], (int32_t)sim->x[r], sim->x[r]);
     }
 }
 

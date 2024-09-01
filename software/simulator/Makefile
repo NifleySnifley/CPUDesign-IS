@@ -1,5 +1,5 @@
 run: build/sim_cli
-	build/sim_cli ../programs/test_main.bin
+	build/sim_cli -o memory.bin -r registers.csv ../programs/test_main.bin
 
 build/sim_cli: build build/sim_cli.o build/rv32i_simulator.o
 	gcc build/sim_cli.o build/rv32i_simulator.o -o ./build/sim_cli

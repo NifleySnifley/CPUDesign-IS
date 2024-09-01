@@ -18,12 +18,14 @@ bool tracing = false;
 
 void dump_sim() {
     if (memory_output_file != NULL) {
+        printf("Dumping memory to '%s'\n", memory_output_file);
         FILE* memfile = fopen(memory_output_file, "w");
         rv_simulator_dump_memory(&sim, memfile);
         fflush(memfile);
         fclose(memfile);
     }
     if (register_dump_file != NULL) {
+        printf("Dumping registers to '%s'\n", register_dump_file);
         FILE* regfile = fopen(register_dump_file, "w");
         rv_simulator_dump_regs(&sim, regfile);
         fflush(regfile);
@@ -127,9 +129,12 @@ int main(int argc, char** argv) {
             printf("Error!\n");
             break;
         } else if (ret < 0) {
-            printf("Breakpoint @ PC=%x press 'c' key to continue, 'r' to print registers, 'm' to print memory, 'd' to dump, ctrl-C to exit.\n", sim.pc);
-            char c = getchar();
-            while (c != 'c') {
+            printf("Breakpoint @ PC=%x\n", sim.pc);
+
+            printf("Press 'c' key to continue, 'r' to print registers, 'm' to print memory, 'd' to dump, ctrl-C to exit.\n");
+            while (1) {
+                char c = getchar();
+                if (c == 'c') { break; }
                 switch (c) {
                     case 'm':
                         rv_simulator_pprint_memory(&sim);
@@ -143,9 +148,7 @@ int main(int argc, char** argv) {
                     default:
                         break;
                 }
-                c = getchar();
             }
-
         }
     }
 

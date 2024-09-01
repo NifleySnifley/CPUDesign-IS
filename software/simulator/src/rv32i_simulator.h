@@ -42,6 +42,8 @@
 
 #define BITS_32 0b11111111111111111111111111111111
 
+extern const char* REG_ABI_NAMES[32];
+
 typedef void (*rv_sim_instr_trace_fn_t) (void*, const char*);
 typedef void (*rv_sim_cond_trace_fn_t) (void*, bool);
 typedef void (*rv_sim_err_trace_fn_t) (void*);
