@@ -40,6 +40,10 @@ const char* REG_ABI_NAMES[32] = {
     "t6"
 };
 
+/// @brief Sign-extends the binary representation of a number
+/// @param num number to extend
+/// @param n_bits bit length of number to extend
+/// @return `num` sign-extended to 32 bits
 uint32_t signext(uint32_t num, int n_bits) {
     return num | (num & (1 << (n_bits - 1)) ? (BITS_32 << n_bits) : 0);
 }
@@ -49,8 +53,6 @@ int rv_simulator_step(rv_simulator_t* sim) {
         (sim->memory[sim->pc + 1] << 8) | \
         (sim->memory[sim->pc + 2] << 16) | \
         (sim->memory[sim->pc + 3] << 24);
-
-    // printf("Inst: %x\n", inst);
 
     uint32_t imm_i = BITS(inst, 20, 31);
     uint32_t imm_s = (BITS(inst, 25, 31) << 5) | BITS(inst, 7, 11);
@@ -401,6 +403,7 @@ bool rv_simulator_load_memory(rv_simulator_t* sim, uint8_t* data, uint32_t offse
     } else {
         memcpy(&sim->memory[offset], data, count);
     }
+    return false;
 }
 
 void rv_simulator_init(rv_simulator_t* sim, uint32_t mem_size) {

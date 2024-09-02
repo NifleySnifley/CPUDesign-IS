@@ -10,7 +10,7 @@ test_main.elf: test_main.c
 	$(COMPILE_COMMAND) -o test_main.elf test_main.c
 
 test_main_debug.elf: test_main.c
-	$(COMPILE_COMMAND) -g -o test_main.elf test_main.c
+	$(COMPILE_COMMAND) -g -o test_main_debug.elf test_main.c
 
 
 dissasemble: test_main_debug.elf test_main.bin

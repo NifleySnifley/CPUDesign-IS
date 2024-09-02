@@ -8,13 +8,23 @@ void __attribute__((section(".text.boot"))) _start() {
 
 #define ANS_MEM (*((int32_t*)0x1100))
 
-// This is big time stupid, but it works!!!
+// Optimized shift-mult
 uint32_t mul(uint32_t a, uint32_t b) {
-	uint32_t ans = 0;
-	for (int i = 0; i < a; ++i) {
-		ans += b;
+	uint32_t tmp = 0;
+
+	if (b > a) {
+		tmp = a;
+		a = b;
+		b = tmp;
+		tmp = 0;
 	}
-	return ans;
+
+	while (b != 0) {
+		if (b & 1) tmp += a;
+		a <<= 1;
+		b >>= 1;
+	}
+	return tmp;
 }
 
 uint32_t fact(uint32_t n) {
@@ -23,7 +33,6 @@ uint32_t fact(uint32_t n) {
 	} else {
 		uint32_t flow = fact(n - 1);
 		return mul(n, flow);
-		// return n * flow;
 	}
 }
 
@@ -32,7 +41,7 @@ int main() {
 
 	ANS_MEM = ans;
 
-	__asm__("ebreak");
+	// __asm__("ebreak");
 
 	return 1;
 }

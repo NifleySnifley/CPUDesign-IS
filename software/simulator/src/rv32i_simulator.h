@@ -42,20 +42,25 @@
 
 #define BITS_32 0b11111111111111111111111111111111
 
+/// @brief Official RISC-V ABI names for each of the 32 registers.
 extern const char* REG_ABI_NAMES[32];
 
+/// @brief Instruction trace function for `rv_simulator_t->instr_trace`
 typedef void (*rv_sim_instr_trace_fn_t) (void*, const char*);
+/// @brief Conditional branch result trace function for `rv_simulator_t->cond_trace`
 typedef void (*rv_sim_cond_trace_fn_t) (void*, bool);
+/// @brief Error trace function for `rv_simulator_t->err_trace`
 typedef void (*rv_sim_err_trace_fn_t) (void*);
-// Read a single uint8_t at address (uint32_t)
+/// @brief Function used by \ref rv_simulator_t for reading bytes from memory
 typedef uint8_t(*rv_sim_read_fn_t) (void*, uint32_t);
-// Write a single value (uint8_t) to address (uint32_t)
+/// @brief Function used by \ref rv_simulator_t for writing bytes from memory
 typedef void (*rv_sim_write_fn_t) (void*, uint32_t, uint8_t);
+
+/// @brief Function used by \ref rv_simulator_t for breakpoints
 typedef void (*rv_sim_breakpoint_fn_t) (void*);
+/// @brief Function used by \ref rv_simulator_t for syscalls (`ecall`)
 typedef void (*rv_sim_syscall_fn_t) (void*);
 
-
-//printf("Instruction @ pc=%x: %s\n", simptr->pc, name);
 #define TRACE_INSTR(simptr, name) if (simptr->instr_trace != NULL) {(simptr->instr_trace)((void*)simptr, name);}
 #define TRACE_COND(simptr, bval) if (simptr->cond_trace != NULL) {(simptr->cond_trace)((void*)simptr, bval);}
 #define TRACE_ERROR(simptr) if (simptr->err_trace != NULL) {(simptr->err_trace)((void*)simptr);}
@@ -66,39 +71,76 @@ typedef void (*rv_sim_syscall_fn_t) (void*);
 #endif
 
 typedef struct rv_simulator_t {
+    /// @brief Register file (x0-x31). x0 will always be 0.
     uint32_t x[32];
+    /// @brief Program-counter for the simulator
     uint32_t pc;
 
-    // Do bounds check
+    /// @brief Size of the simulator's memory
     uint32_t mem_size;
+    /// @brief Allocated memory for the simulator
     uint8_t* memory;
 
-    // Hook & trace functions
+    /// @brief Trace function for instruction execution. `NULL` to disable instruction tracing
     rv_sim_instr_trace_fn_t instr_trace;
+    /// @brief Trace function for branch results. `NULL` to disable branch tracing
     rv_sim_cond_trace_fn_t cond_trace;
+    /// @brief Trace function for errors. `NULL` to disable error tracing
     rv_sim_err_trace_fn_t err_trace;
 
+    /// @brief Hook function for memory reading. set to \ref rv_simulator_default_read by default
     rv_sim_read_fn_t read_fn;
+    /// @brief Hook function for memory writing. set to \ref rv_simulator_default_write by default
     rv_sim_write_fn_t write_fn;
 
+    /// @brief Function executed on breakpoints
     rv_sim_breakpoint_fn_t bkpt_fn;
+    /// @brief Function executed on system calls (`ecall` instruction)
     rv_sim_syscall_fn_t scall_fn;
 } rv_simulator_t;
 
-// Returns -1 on breakpoint, -2 on syscall, >0 on error
+/// @brief Executes a single instruction (at sim->pc)
+/// @param sim simulator
+/// @return 0 on success, -1 on breakpoint, -2 on syscall, >0 on error
 int rv_simulator_step(rv_simulator_t* sim);
 
+/// @brief Loads bytes into the memory of \ref
+/// @param sim simulator to load memory contents into
+/// @param data desired memory content pointer
+/// @param offset starting offset in memory to load memory into
+/// @param count number of bytes to load
+/// @return `false` on success `true` if data cannot fit inside `sim`'s" allocated memory
 bool rv_simulator_load_memory(rv_simulator_t* sim, uint8_t* data, uint32_t offset, uint32_t count);
 
+/// @brief Initializes simulator
+/// @param sim simulator
+/// @param mem_size size of memory (bytes) to allocate for the simulator
 void rv_simulator_init(rv_simulator_t* sim, uint32_t mem_size);
+
+/// @brief Frees all resources allocated by `sim`
+/// @param sim simulator
 void rv_simulator_deinit(rv_simulator_t* sim);
 
+/// @brief Prints current state of all registers
+/// @param sim simulator
 void rv_simulator_print_regs(rv_simulator_t* sim);
 
+/// @brief Dumps the current state of `sim`'s registers to a file (CSV formatted)
+/// @param sim simulator
+/// @param file open, read-capable `FILE*` to write to
+/// @return 0 on success, nonzero on error
 int rv_simulator_dump_regs(rv_simulator_t* sim, FILE* file);
+/// @brief Dumps the contents of `sim`'s memory to a file (binary)
+/// @param sim simulator
+/// @param file open, read-capable `FILE*` to write to
+/// @return 0 on success, nonzero on error
 int rv_simulator_dump_memory(rv_simulator_t* sim, FILE* file);
 
+/// @brief Pretty-prints current state of `sim`'s memory using `hd` (`hexdump -C`)
+/// @param sim simulator
 void rv_simulator_pprint_memory(rv_simulator_t* sim);
+/// @brief Pretty-prints current state of `sim`'s registers (with color!) including ABI names
+/// @param sim simulator
 void rv_simulator_pprint_registers(rv_simulator_t* sim);
 
 uint8_t rv_simulator_default_read(void* sim, uint32_t addr);

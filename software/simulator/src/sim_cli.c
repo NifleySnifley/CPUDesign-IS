@@ -71,8 +71,8 @@ int main(int argc, char** argv) {
             case 'v':
                 tracing = true;
                 break;
-            default: /* '?' */
-                fprintf(stderr, "Usage: %s [-p pc = 0x0 ] [-m memory-size = 0x2000 ] [-o memory-dumpfile = memory.bin ] [-r register-dumpfile = registers.csv ] input_memory.bin \n",
+            default:
+                fprintf(stderr, "Usage: %s [-p pc = 0x0 ] [-m memory-size = 0x2000 ] [-o memory-dumpfile = memory.bin ] [-r register-dumpfile = registers.csv ] [-v (verbose) ] input_memory.bin \n",
                     argv[0]);
                 exit(EXIT_FAILURE);
         }
@@ -90,6 +90,7 @@ int main(int argc, char** argv) {
     rv_simulator_init(&sim, memory_size);
     if (tracing)
         sim.instr_trace = instr_trace;
+    sim.x[1] = (uint32_t)-1; // Set return address for the program to a known location!
     sim.x[2] = 0x1800; // FIXME: setting stack pointer somewhere in RAM
     sim.pc = pc_start;
 
@@ -123,6 +124,11 @@ int main(int argc, char** argv) {
 
 
     while (1) {
+        if (sim.pc == (uint32_t)-1) {
+            printf("Program returned\n");
+            break;
+        }
+
         int ret = rv_simulator_step(&sim);
 
         if (ret > 0) {
