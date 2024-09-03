@@ -1,0 +1,60 @@
+As of 8/31, switched from python to C implementation, and therefore for processor simulation, Verilator will be used instead of Cocotb.
+
+- [x] Instruction Decoding
+- [x] Loading instructions from compiled/assembled `.bin` files
+	- [x] Basic CLI interface
+- [x] Implement Instructions:
+	- [x] ALU Instructions:
+		- [x] ADD
+		- [x] SUB
+		- [x] XOR
+		- [x] OR
+		- [x] AND
+		- [x] ADDI
+		- [x] XORI
+		- [x] ORI
+		- [x] ANDI
+	- [x] Shift Instructions
+		- [x] SHL
+		- [x] SRL
+		- [x] SRA
+		- [x] SLT
+		- [x] SLTU
+		- [x] SLLI
+		- [x] SRLI
+		- [x] SRAI
+		- [x] SLTI
+		- [x] SLTIU
+	- [x] Load Instructions
+		- [x] LB
+		- [x] LH
+		- [x] LW
+		- [x] LBU
+		- [x] LHU
+	- [x] Set Instructions
+		- [x] SB
+		- [x] SH
+		- [x] SW
+	- [x] Branch Instructions
+		- [x] BEQ
+		- [x] BNE
+		- [x] BLT
+		- [x] BGE
+		- [x] BLTU
+		- [x] BGEU
+	- [x] Jumps
+		- [x] JAL
+		- [x] JALR
+	- [x] LUI
+	- [x] AUIPC
+	- [x] System Instructions
+		- [x] ECALL
+		- [x] EBREAK
+	- [ ] *CSR/SYSTEM Instructions (trap?)*
+	- [ ] FENCE (not neccesary)
+- [x] **Are CSRs neccesary?**
+	- [ ] No, not yet hehe!
+- [x] Save memory state as a `.bin`?
+- [x] View registers at the end
+- [x] Interactive breakpoints
+- [x] Hooks for inspecting state, debugging, etc.

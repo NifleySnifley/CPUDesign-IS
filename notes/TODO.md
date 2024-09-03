@@ -1,0 +1,31 @@
+- Housekeeping
+	- [x] Put this obsidian vault in with the repo to VC it
+	- [x] put the repo on GitHub
+	- [ ] Be able to easily run small tests and LOTS of unit tests!
+		- [ ] Cocotb, get familiar!
+	- [ ] Set this up on a laptop I can bring to school
+- Simulator
+	- [ ] Graphical output (vRAM type) with output using SDL/SFML/etc.
+	- [ ] Simulated output (semihosting, whatever)
+- Tooling
+	- Programming
+		- [ ] Figure out how to compile programs with `-nostdlib` but also support for capabilities emulation (floats, multiplication, etc)
+			- Seems like it's a `libgcc` thing? but I can't seem to link it in
+		- [ ] Figure out how to compile programs with a proper, statically linked `libc`, so I can use `malloc`&`free`, `strlen`, etc.
+	- HDL
+		- [ ] Get verilog intellisense properly working
+			- [ ] Lang server? needs to be aware of other modules
+		- [ ] SystemVerilog or not...
+- CPU
+	- [ ] Make a nice testbench!
+		- [x] Fully featured (display registers & pc, internal state)
+		- [ ] `Verilator` probably
+		- [ ] Load memory from c++, dump, etc.
+		- [ ] Make sure there are debug defines and it's possible to print from inside the verilog!
+	- [ ] Make components:
+		- [ ] Register file (in CPU module)
+		- [ ] CPU top module
+		- [ ] ALU sub-module
+		- [ ] Shifter sub-module?
+		- [ ] Memory module
+		- [ ] Decoding logic in CPU module
