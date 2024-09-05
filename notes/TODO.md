@@ -7,6 +7,8 @@
 - Simulator
 	- [ ] Graphical output (vRAM type) with output using SDL/SFML/etc.
 	- [ ] Simulated output (semihosting, whatever)
+	- [ ] **Unit tests!**
+		- ctest? something simple if possible
 - Tooling
 	- Programming
 		- [ ] Figure out how to compile programs with `-nostdlib` but also support for capabilities emulation (floats, multiplication, etc)
