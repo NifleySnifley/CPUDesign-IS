@@ -6,7 +6,7 @@ module tb ();
     reg [31:0] b;
     wire signed [31:0] result;
 
-    addsub uut (
+    add_sub uut (
         .is_sub(sub),
         .a(a),
         .b(b),

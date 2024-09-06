@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 #define BITS(x,lo,hi) ((x >> lo) & ((2<<(hi-lo))-1))
 #define NONES(n) ((1<<n)-1)
@@ -72,7 +73,13 @@ typedef void (*rv_sim_syscall_fn_t) (void*);
 
 typedef struct rv_simulator_t {
     /// @brief Register file (x0-x31). x0 will always be 0.
-    uint32_t x[32];
+    union {
+        uint32_t x[32];
+        struct {
+            uint32_t zero, ra, sp, gp, tp, t0, t1, t2, fp, s1, a0, a1, a2, a3, a4, a5, a6, a7, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, t3, t4, t5, t6;
+        };
+    };
+
     /// @brief Program-counter for the simulator
     uint32_t pc;
 
@@ -146,5 +153,10 @@ void rv_simulator_pprint_registers(rv_simulator_t* sim);
 uint8_t rv_simulator_default_read(void* sim, uint32_t addr);
 void rv_simulator_default_write(void* sim, uint32_t addr, uint8_t data);
 
+/// @brief Loads memory contents from a binary file into simulator's memory
+/// @param sim simulator to load into
+/// @param filename path to the file containing binary memory contents
+/// @return 0 on success, nonzero error code
+int rv_simulator_load_memory_from_file(rv_simulator_t* sim, const char* filename);
 
 #endif

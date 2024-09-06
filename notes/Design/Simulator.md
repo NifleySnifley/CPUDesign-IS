@@ -58,3 +58,5 @@ As of 8/31, switched from python to C implementation, and therefore for processo
 - [x] View registers at the end
 - [x] Interactive breakpoints
 - [x] Hooks for inspecting state, debugging, etc.
+- [x] Comprehensive Testing
+	- [x] RISC-V ISA test suite

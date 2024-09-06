@@ -9,7 +9,7 @@ MEMORY
 SECTIONS
 {
     .text : {
-        KEEP(*(.text.boot))
+        KEEP(*(.text.start))
 
         *(.text*)
     } > rom

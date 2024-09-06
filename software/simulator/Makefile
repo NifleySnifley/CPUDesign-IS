@@ -1,3 +1,5 @@
+.PHONY: test
+
 run: build/sim_cli
 	build/sim_cli -o memory.bin -r registers.csv ../programs/test_baremetal/test_main.bin
 
@@ -10,5 +12,12 @@ build/sim_cli.o: build src/sim_cli.c
 build/rv32i_simulator.o: build src/rv32i_simulator.c src/rv32i_simulator.h
 	gcc -O5 -Isrc -c src/rv32i_simulator.c -o build/rv32i_simulator.o
 
+test: build/rv32i_simulator.o
+	$(MAKE) -C test
+
 build:
 	mkdir -p build
+
+clean:
+	rm -rf ./build
+	$(MAKE) -C test clean

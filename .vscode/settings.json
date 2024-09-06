@@ -18,5 +18,5 @@
 		"stdint.h": "c",
 		"cstdint": "c"
 	},
-	"workbench.colorTheme": "Xcode Default (Light)"
+	// "workbench.colorTheme": "Xcode Default (Light)"
 }

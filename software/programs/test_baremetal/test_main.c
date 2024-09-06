@@ -1,7 +1,7 @@
 int main();
 #include <stdint.h>
 
-void __attribute__((section(".text.boot"))) _start() {
+void __attribute__((section(".text.start"))) _start() {
 	// __asm__("addi sp,zero,200");
 	main();
 }

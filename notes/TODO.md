@@ -3,7 +3,7 @@
 	- [x] put the repo on GitHub
 	- [ ] Be able to easily run small tests and LOTS of unit tests!
 		- [ ] Cocotb, get familiar!
-	- [ ] Set this up on a laptop I can bring to school
+	- [x] Set this up on a laptop I can bring to school
 - Simulator
 	- [ ] Graphical output (vRAM type) with output using SDL/SFML/etc.
 	- [ ] Simulated output (semihosting, whatever)

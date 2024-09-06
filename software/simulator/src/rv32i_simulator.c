@@ -48,6 +48,15 @@ uint32_t signext(uint32_t num, int n_bits) {
     return num | (num & (1 << (n_bits - 1)) ? (BITS_32 << n_bits) : 0);
 }
 
+uint32_t sra(uint32_t num, int shift_amount) {
+    bool msb = num & (1 << 31);
+    num >>= shift_amount;
+    if (msb) {
+        num |= (BITS_32 << 32 - 1 - shift_amount);
+    }
+    return num;
+}
+
 int rv_simulator_step(rv_simulator_t* sim) {
     uint32_t inst = (sim->memory[sim->pc + 0] << 0) | \
         (sim->memory[sim->pc + 1] << 8) | \
@@ -132,7 +141,7 @@ int rv_simulator_step(rv_simulator_t* sim) {
                         // SLT
                     case 0x2:
                         TRACE_INSTR(sim, "SLT");
-                        RSET(rd, ((int32_t)(rs1) < (int32_t)(rs2)) ? 1 : 0);
+                        RSET(rd, ((int32_t)(R(rs1)) < (int32_t)(R(rs2))) ? 1 : 0);
                         break;
                         // SLTU
                     case 0x3:
@@ -155,7 +164,7 @@ int rv_simulator_step(rv_simulator_t* sim) {
                     // SRA
                     // TODO: TEST!!!
                     TRACE_INSTR(sim, "SRA");
-                    RSET(rd, (R(rs1) >> R(rs2)) | (BITS_32 << (32 - R(rs2))));
+                    RSET(rd, sra(R(rs1), R(rs2)));
                 } else {
                     TRACE_INSTR(sim, "INVALID 2");
                     TRACE_ERROR(sim);
@@ -210,7 +219,7 @@ int rv_simulator_step(rv_simulator_t* sim) {
                     // SRAI
                     TRACE_INSTR(sim, "SRAI");
                     uint32_t samt = imm_i & 0b11111;
-                    RSET(rd, (R(rs1) >> samt) | (BITS_32 << (32 - samt)));
+                    RSET(rd, sra(R(rs1), samt));
                 } else {
                     TRACE_INSTR(sim, "INVALID 4");
                     TRACE_ERROR(sim);
@@ -223,7 +232,7 @@ int rv_simulator_step(rv_simulator_t* sim) {
             {
                 // TODO: Check signext
                 TRACE_INSTR(sim, "SLTI");
-                RSET(rd, ((int32_t)(rs1) < s_imm_i) ? 1 : 0);
+                RSET(rd, ((int32_t)(R(rs1)) < (int32_t)s_imm_i) ? 1 : 0);
             }
             break;
             // SLTIU
@@ -484,4 +493,32 @@ void rv_simulator_default_write(void* _sim, uint32_t addr, uint8_t data) {
     } else {
         fprintf(stderr, "Error, attempted write outside of memory bounds (write %x @ %x)!\n", data, addr);
     }
+}
+
+int rv_simulator_load_memory_from_file(rv_simulator_t* sim, const char* filename) {
+    FILE* binfile = fopen(filename, "r");
+    if (binfile == NULL) {
+        return 1;
+    }
+
+    fseek(binfile, 0, SEEK_END);
+    int binsize = ftell(binfile);
+    rewind(binfile);
+
+    if (binsize > sim->mem_size) {
+        return 2;
+    }
+
+    int idx = 0;
+    do {
+        int n = fread(&sim->memory[idx], 1, binsize - idx, binfile);
+        if (n == -1) {
+            fprintf(stderr, "Error reading file!\n");
+            return 4;
+        }
+        idx += n;
+    } while (idx != binsize);
+    fclose(binfile);
+
+    return 0;
 }
