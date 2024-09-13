@@ -29,8 +29,6 @@ bool test_rv_test(char* testname) {
     strrem -= strlen(testname);
     strncat(code_filename, ".bin", strrem);
 
-    printf("Loading file: %s\n", code_filename);
-
     rv_simulator_t sim;
     rv_simulator_init(&sim, 0x2000);
     rv_simulator_load_memory_from_file(&sim, code_filename);

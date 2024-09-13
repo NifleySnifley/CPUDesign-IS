@@ -8,4 +8,4 @@
 - [Jan Gray's RISC CPU](http://www.fpgacpu.org/papers/xsoc-series-drafts.pdf)
 - [MIT 6.111 Introductory Digital Systems Laboratory](http://web.mit.edu/6.111/www/f2016/)
 - [Ripes Simulator](https://github.com/mortbopet/Ripes)
-- 
+- [8-bit FPGA CPU](https://austinmorlan.com/posts/8bit_breadboard_fpga/)

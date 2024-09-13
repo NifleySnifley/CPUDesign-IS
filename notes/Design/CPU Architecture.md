@@ -1,0 +1,13 @@
+## Components:
+- **ALU**
+	- Handles arithmetic instructions
+		- `add`
+		- `sub`
+		- `xor`
+		- `or`
+		- `and`
+		- By extension (multiplexion):
+			- `addi`
+			- `xori`
+			- `ori`
+			- `andi`

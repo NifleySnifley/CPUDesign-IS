@@ -2,12 +2,8 @@
 **Accesing registers also takes one cycle! eeek!!! this is why pipelining is a thing......**
 - Honestly, I'm excited to implement a simple pipeline (stall on hazards)
 ### Components:
-- Decoder (imms, registers, etc.)
 - ALU (functs, input -> operation)
-	- Only arithmetic
-- Shifter
-	- Barrel or sequential shifter
-	- Sequential shifter (takes a while) would be a good way to learn how to make parts of operation take multiple cycles
+	- All arithmetic instructions and shifts
 
 Types of instructions:
 - According to `learn_fpga`'s FemtoRV
@@ -72,8 +68,8 @@ Seems like adding support for the `C` extension (16-bit instructions) in the fut
 ## State Machines!:
 - Fetch instruction (load mem)
 	- Set addr, wait for ready
-- Fetch operands & immediates (base on instruction encoding type)
-	- Combinatorically generate inputs to ALU, shifter, memory load/save, etc.
+- **Decode** (Fetch operands & immediates based on instruction encoding type, etc.)
+	- Combinatorically generate inputs to ALU, shifter, memory load/save, etc?
 - Execute
 	- Depending on which tool (alu, shifter) used, wait for completion
 	- Set PC to next neccesary value (++ or target)
@@ -81,7 +77,23 @@ Seems like adding support for the `C` extension (16-bit instructions) in the fut
 - Writeback (After execute, sort-of during next instruction fetch?)
 	- Not always neccesary, check for rd in encoding type
 	- Make sure not to write to x0 (hardwire it to 0 when reading to be super sure)
+	- **Move PC here**
 
+## Optimizations:
+- One-hot states & decoding for instructions?
+	- Get it working first, then speed up, then save on LUTs
+- Save on the adder for AUIPC & JAL/JALR
+	- Use the ALU? or just share an adder
+- This bit of shifting code from FemtoRV is really neat
+```verilog
+wire [31:0] shifter =
+	   $signed({instr[30] & aluIn1[31], shifter_in}) >>> aluIn2[4:0];
+```
+- Uses one arithmetic shifter (for selecting what bit is extended with), and full bit reversal (input and output) for shift direction.
+- One-hot `funct3` for ALU
+	- Split funct3 into shifted one-hot
+	- Use ternaries, `32'b0`, and or-ing to select output
+		- Saves LUTs on case-statement multiplexing
 
 Optimize ALU later?
 - Fancy sub comparison thing
