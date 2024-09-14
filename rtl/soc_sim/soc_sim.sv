@@ -2,7 +2,9 @@
 // `include "../cpu/cpu.sv"
 // `include "../common/memory.sv"
 
-module soc_sim (
+module soc_sim #(
+    parameter INITF = "../../software/programs/assembly/test_program.txt"
+) (
     input wire clk,
     input wire rst
 );
@@ -13,9 +15,11 @@ module soc_sim (
     wire mem_wstrobe;
     wire mem_done;
 
+    wire instruction_sync;
+
     memory #(
         .WIDTH (32),
-        .INIT_F("../../software/programs/assembly/test_program.txt")
+        .INIT_F(INITF)
     ) mem (
         .clk,
         .mem_addr,
@@ -32,6 +36,7 @@ module soc_sim (
         .mem_wdata,
         .mem_rdata,
         .mem_done,
-        .mem_wstrobe
+        .mem_wstrobe,
+        .instruction_sync
     );
 endmodule
