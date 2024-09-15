@@ -2,7 +2,7 @@ SV_FILES=../common/defs.sv ../cpu/cpu.sv ../alu/alu.sv ../common/memory.sv ./soc
 
 .PHONY: apio
 apio: build/icefun.pcf build/soc_fpga.v build/apio.ini
-	cd build && apio build && apio upload
+	cd build && apio build --verbose-pnr && apio upload
 
 build/soc_fpga.v: build $(SV_FILES) ../../software/programs/assembly/test_program.txt
 	sv2v --siloed $(SV_FILES) -w build/soc_fpga.v

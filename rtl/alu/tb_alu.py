@@ -11,7 +11,6 @@ async def clk(dut):
     await Timer(1, units="ns")
 
 async def reset(dut):
-    dut.alu_start.value = 0
     dut.rst.value = 1
     await clk(dut)
     dut.clk.value = 0
@@ -23,11 +22,7 @@ async def run(dut, op1: int, op2: int, funct3: int, funct7: int):
     dut.funct7.value = funct7
     dut.in1.value = op1
     dut.in2.value = op2
-    dut.alu_start.value = 1
     await clk(dut)
-    dut.alu_start.value = 0
-    while not dut.alu_done.value:
-        await clk(dut)
 
     return dut.out.value
 
@@ -91,3 +86,12 @@ async def test_sll(dut):
         a,b = random.randint(0, 2**32-1), random.randint(0, 32)
         ans = await run(dut, a,b,0b001, 0b0000000)
         assert ans.value == (a<<(b&0b11111))&0xFFFFFFFF
+        
+@cocotb.test()
+async def test_srl(dut):
+    await reset(dut)
+
+    for _ in range(1000):
+        a,b = random.randint(0, 2**32-1), random.randint(0, 32)
+        ans = await run(dut, a,b,0x5, 0b0000000)
+        assert ans.value == (a>>(b&0b11111))&0xFFFFFFFF
