@@ -498,7 +498,7 @@ void rv_simulator_default_write(void* _sim, uint32_t addr, uint8_t data) {
 int rv_simulator_load_memory_from_file(rv_simulator_t* sim, const char* filename) {
     FILE* binfile = fopen(filename, "r");
     if (binfile == NULL) {
-        return 1;
+        return -1;
     }
 
     fseek(binfile, 0, SEEK_END);
@@ -506,7 +506,7 @@ int rv_simulator_load_memory_from_file(rv_simulator_t* sim, const char* filename
     rewind(binfile);
 
     if (binsize > sim->mem_size) {
-        return 2;
+        return -2;
     }
 
     int idx = 0;
@@ -514,11 +514,11 @@ int rv_simulator_load_memory_from_file(rv_simulator_t* sim, const char* filename
         int n = fread(&sim->memory[idx], 1, binsize - idx, binfile);
         if (n == -1) {
             fprintf(stderr, "Error reading file!\n");
-            return 4;
+            return -4;
         }
         idx += n;
     } while (idx != binsize);
     fclose(binfile);
 
-    return 0;
+    return binsize;
 }

@@ -11,50 +11,57 @@ module cpu (
     output reg mem_wstrobe,
     input wire mem_done,  // Read or write done
 
-    output wire instruction_sync
+    output wire instruction_sync,
+
+
+    output wire [31:0] dbg_output,
+    output wire [31:0] dbg_pc
 );
     // Register file
+
     reg [31:0] registers[0:31];
     initial begin
         registers[0] = 0;
     end
-    // assign registers[0] = 0;  // HACK: Hold registers[0] at 0??
-
-    wire [31:0] reg_dbg_x0 = registers[0];
-    wire [31:0] reg_dbg_x1 = registers[1];
-    wire [31:0] reg_dbg_x2 = registers[2];
-    wire [31:0] reg_dbg_x3 = registers[3];
-    wire [31:0] reg_dbg_x4 = registers[4];
-    wire [31:0] reg_dbg_x5 = registers[5];
-    wire [31:0] reg_dbg_x6 = registers[6];
-    wire [31:0] reg_dbg_x7 = registers[7];
-    wire [31:0] reg_dbg_x8 = registers[8];
-    wire [31:0] reg_dbg_x9 = registers[9];
-    wire [31:0] reg_dbg_x10 = registers[10];
-    wire [31:0] reg_dbg_x11 = registers[11];
-    wire [31:0] reg_dbg_x12 = registers[12];
-    wire [31:0] reg_dbg_x13 = registers[13];
-    wire [31:0] reg_dbg_x14 = registers[14];
-    wire [31:0] reg_dbg_x15 = registers[15];
-    wire [31:0] reg_dbg_x16 = registers[16];
-    wire [31:0] reg_dbg_x17 = registers[17];
-    wire [31:0] reg_dbg_x18 = registers[18];
-    wire [31:0] reg_dbg_x19 = registers[19];
-    wire [31:0] reg_dbg_x20 = registers[20];
-    wire [31:0] reg_dbg_x21 = registers[21];
-    wire [31:0] reg_dbg_x22 = registers[22];
-    wire [31:0] reg_dbg_x23 = registers[23];
-    wire [31:0] reg_dbg_x24 = registers[24];
-    wire [31:0] reg_dbg_x25 = registers[25];
-    wire [31:0] reg_dbg_x26 = registers[26];
-    wire [31:0] reg_dbg_x27 = registers[27];
-    wire [31:0] reg_dbg_x28 = registers[28];
-    wire [31:0] reg_dbg_x29 = registers[29];
-    wire [31:0] reg_dbg_x30 = registers[30];
-    wire [31:0] reg_dbg_x31 = registers[31];
 
     // PC
-    reg  [31:0] pc;
+    reg [31:0] pc = 0;
+
+    // wire [31:0] reg_dbg_x0 = registers[0];
+    // wire [31:0] reg_dbg_x1 = registers[1];
+    // wire [31:0] reg_dbg_x2 = registers[2];
+    // wire [31:0] reg_dbg_x3 = registers[3];
+    // wire [31:0] reg_dbg_x4 = registers[4];
+    // wire [31:0] reg_dbg_x5 = registers[5];
+    // wire [31:0] reg_dbg_x6 = registers[6];
+    // wire [31:0] reg_dbg_x7 = registers[7];
+    // wire [31:0] reg_dbg_x8 = registers[8];
+    // wire [31:0] reg_dbg_x9 = registers[9];
+    // wire [31:0] reg_dbg_x10 = registers[10];
+    // wire [31:0] reg_dbg_x11 = registers[11];
+    // wire [31:0] reg_dbg_x12 = registers[12];
+    // wire [31:0] reg_dbg_x13 = registers[13];
+    // wire [31:0] reg_dbg_x14 = registers[14];
+    // wire [31:0] reg_dbg_x15 = registers[15];
+    // wire [31:0] reg_dbg_x16 = registers[16];
+    // wire [31:0] reg_dbg_x17 = registers[17];
+    // wire [31:0] reg_dbg_x18 = registers[18];
+    // wire [31:0] reg_dbg_x19 = registers[19];
+    // wire [31:0] reg_dbg_x20 = registers[20];
+    // wire [31:0] reg_dbg_x21 = registers[21];
+    // wire [31:0] reg_dbg_x22 = registers[22];
+    // wire [31:0] reg_dbg_x23 = registers[23];
+    // wire [31:0] reg_dbg_x24 = registers[24];
+    // wire [31:0] reg_dbg_x25 = registers[25];
+    // wire [31:0] reg_dbg_x26 = registers[26];
+    // wire [31:0] reg_dbg_x27 = registers[27];
+    // wire [31:0] reg_dbg_x28 = registers[28];
+    // wire [31:0] reg_dbg_x29 = registers[29];
+    // wire [31:0] reg_dbg_x30 = registers[30];
+    // wire [31:0] reg_dbg_x31 = registers[31];
+
+    assign dbg_output = registers[10];
+    assign dbg_pc = pc;
 
     // Processor state (one-hot)
     localparam STATE_INST_FETCH = 4'b0001;
@@ -143,7 +150,7 @@ module cpu (
     reg [31:0] rs2_value;
 
     wire [2:0] branch_cond_type_onehot = 3'b1 << funct3[2:1];  // Equal, LT, LT(U)
-    wire branch_cond_inverted = ~funct3[0];  // Flip output
+    wire branch_cond_inverted = funct3[0];  // Flip output
     reg branch_test = (branch_cond_type_onehot[0] ? rs1_value == rs2_value : 1'b0) |
     (branch_cond_type_onehot[1] ? $signed(
         rs1_value
@@ -158,10 +165,13 @@ module cpu (
 
     // FIXME: Fix the stupid add 4 branch nonsense, add the is_jumping wire to determine to use +4 or not
     // wire [31:0] pc_next = (inst_is_jal | inst_is_jalr | inst_is_branch)
+
+    wire jumping = inst_is_jal | inst_is_jalr | (inst_is_branch & branch_cond);
+
     wire [31:0] pc_next = pc + (
         (inst_is_jal ? imm_j : 0) | 
         (inst_is_jalr ? (imm_i + rs1_value) : 0) | 
-        ((inst_is_branch & branch_cond) ? imm_b : 4) // NOTE: This is the normal 4-advance 
+        (inst_is_branch ? imm_b : 0)
     );
 
     reg ilatch = 1'b0;
@@ -211,6 +221,8 @@ module cpu (
                     end else if (inst_is_jal | inst_is_jalr) begin
                         writeback_value <= pc_advanced;
                         state <= STATE_WRITEBACK;
+                    end else if (inst_is_branch) begin
+                        state <= STATE_WRITEBACK;
                     end
                 end
                 STATE_EXEC: begin
@@ -228,7 +240,7 @@ module cpu (
                     // HOUSEKEEPING
                     alu_start <= 1'b0;
 
-                    pc <= pc_next;
+                    pc <= jumping ? pc_next : pc_advanced;
                     // Don't write to x0 (always 32'b0)
                     if (inst_has_writeback & (|rd)) begin
                         registers[rd] <= writeback_value;

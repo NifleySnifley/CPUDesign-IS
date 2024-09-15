@@ -3,10 +3,11 @@
 // `include "../common/memory.sv"
 
 module soc_sim #(
-    parameter INITF = "../../software/programs/assembly/test_program.txt"
+    parameter INITF = ""
 ) (
-    input wire clk,
-    input wire rst
+    input  wire clk,
+    input  wire rst,
+    output wire instruction_sync
 );
     // Memory interface
     wire [31:0] mem_addr;
@@ -14,8 +15,6 @@ module soc_sim #(
     wire [31:0] mem_rdata;
     wire mem_wstrobe;
     wire mem_done;
-
-    wire instruction_sync;
 
     memory #(
         .WIDTH (32),
@@ -28,6 +27,9 @@ module soc_sim #(
         .mem_done,
         .mem_wstrobe
     );
+
+    wire [31:0] dbg_output;
+    wire [31:0] dbg_pc;
     //
     cpu core0 (
         .clk,
@@ -37,6 +39,8 @@ module soc_sim #(
         .mem_rdata,
         .mem_done,
         .mem_wstrobe,
-        .instruction_sync
+        .instruction_sync,
+        .dbg_output,
+        .dbg_pc
     );
 endmodule

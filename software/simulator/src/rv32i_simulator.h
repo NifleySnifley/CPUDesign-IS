@@ -156,7 +156,7 @@ void rv_simulator_default_write(void* sim, uint32_t addr, uint8_t data);
 /// @brief Loads memory contents from a binary file into simulator's memory
 /// @param sim simulator to load into
 /// @param filename path to the file containing binary memory contents
-/// @return 0 on success, nonzero error code
+/// @return binary size on success, negative on error
 int rv_simulator_load_memory_from_file(rv_simulator_t* sim, const char* filename);
 
 #endif

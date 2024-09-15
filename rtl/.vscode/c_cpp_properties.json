@@ -1,0 +1,21 @@
+{
+    "configurations": [
+        {
+            "name": "Verilator",
+            "compilerPath": "/bin/clang++",
+            "compilerArgs": [
+                "-cc"
+            ],
+            "includePath": [
+                // "${workspaceFolder}/**",
+                "/usr/include",
+                "/usr/local/include",
+                "/usr/share/verilator/include",
+                "/usr/include/linux"
+            ],
+            "cStandard": "c11",
+            "cppStandard": "c++17"
+        }
+    ],
+    "version": 4
+}

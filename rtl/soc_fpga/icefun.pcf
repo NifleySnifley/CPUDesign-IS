@@ -1,0 +1,106 @@
+####################################################
+# Oscillator.
+# An on-board 12MHz oscillator feeds pin P7 (GBIN5).
+
+set_io --warn-no-port clk12MHz	P7
+
+####################################################
+# High Current RGB drivers. Up to 3 Amp total current.
+# Designed for 12v LED strips.
+# You MUST use the GND pin between P14 and N14 for
+# the return ground (0v).
+
+set_io --warn-no-port blue  	L14
+set_io --warn-no-port green  	N14
+set_io --warn-no-port red 		P14
+
+####################################################
+# Push buttons with on-board pull-up resistors,
+# low when pressed.
+
+set_io --warn-no-port key1  	C11
+set_io --warn-no-port key2  	C6
+set_io --warn-no-port key3  	A11
+set_io --warn-no-port key4  	A5
+
+####################################################
+# LED rows, drive low to light LED.
+
+set_io --warn-no-port lcol1		A12
+set_io --warn-no-port lcol2	 	D10
+set_io --warn-no-port lcol3 	A6
+set_io --warn-no-port lcol4 	C5
+
+####################################################
+# LED columns, drive low to light LED.
+
+set_io --warn-no-port led1	 	C10
+set_io --warn-no-port led2 		A10
+set_io --warn-no-port led3 		D7
+set_io --warn-no-port led4 		D6
+set_io --warn-no-port led5	 	A7
+set_io --warn-no-port led6	 	C7
+set_io --warn-no-port led7	 	A4
+set_io --warn-no-port led8	 	C4
+
+####################################################
+# Piezo Speaker.
+# Two pins drive the on-board piezo speaker.
+
+set_io --warn-no-port spkm  	M6
+set_io --warn-no-port spkp  	M12
+
+####################################################
+# 10-bit A/D converters, accessed via serial commands
+# to the on-board PIC16LF1459 CPU.
+# 250k baud, 1 start, 8 data, 1 stop, no parity.
+# X1 - send command 0xA1
+# X2 - 0xA2
+# X3 - 0xA3
+# X4 - 0xA4
+# Receive 2 bytes, high byte first. Combine for 10 bit
+# right justified result.
+
+set_io --warn-no-port ad_tx P4
+set_io --warn-no-port ad_rx P5
+
+####################################################
+# 8Mb (1MB) SPI Flash (Kynix AT25SF081).
+# First three 64k sectors reserved for the FPGA configuration.
+
+set_io --warn-no-port spi_cs P13
+set_io --warn-no-port spi_sck P12
+set_io --warn-no-port spi_sdi P11 # SDO on flash chip
+set_io --warn-no-port spi_sdo M11 # SDI on flash chip
+
+################# Pinout ##################
+#   A3  - | 1  |            | 58 | - B14  #
+#   A2  - | 2  |            | 57 | - C12  #
+#   A1  - | 3  |            | 56 | - C14  #
+#   C3  - | 4  |            | 55 | - D12  #
+#   D3  - | 5  |            | 54 | - D14  #
+#   B1  - | 6  |            | 53 | - E12  #
+#   C1  - | 7  |            | 52 | - E14  #
+#   D1  - | 8  |            | 51 | - F12  #
+#   E1  - | 9  |            | 50 | - F14  #
+#   F3  - | 10 |            | 49 | - G12  #
+#   G3  - | 11 |            | 48 | - G14  #
+#   H3  - | 12 |            | 47 | - H12  #
+#   J3  - | 13 |            | 46 | - J12  #
+#   K3  - | 14 |            | 45 | - K12  #
+#   M3  - | 15 |            | 44 | - K14  #
+#   G1  - | 16 |            | 43 | - H11  #
+#   H1  - | 17 |            | 42 | - L12  #
+#   J1  - | 18 |            | 41 | - L14  #
+#   L1  - | 19 |            | 40 | - N14  #
+#   M1  - | 20 |            | 39 | - GND  #
+#   N1  - | 21 |            | 38 | - P14  #
+#   P1  - | 22 |            | 37 | - P10  #
+#   P2  - | 23 |            | 36 | - M9   #
+#   P3  - | 24 |            | 35 | - P9   #
+#   AD1 - | 25 |            | 34 | - P8   #
+#   AD2 - | 26 |            | 33 | - AD4  #
+#   GND - | 27 |            | 32 | - AD3  #
+#   3V3 - | 28 |            | 31 | - GND  #
+#   RST - | 29 |            | 30 | - 5V   #
+################### USB ###################

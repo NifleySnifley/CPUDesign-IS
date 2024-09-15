@@ -13,12 +13,13 @@ module memory #(
 
     input wire clk
 );
-    reg [WIDTH-1:0] memory[$clog2(DEPTH)-1:0];
+
+    reg [WIDTH-1:0] memory[DEPTH-1:0];
 
     assign mem_done = 1'b1;  // HUHHH yes
 
     initial begin
-        if (INIT_F != 0) $readmemb(INIT_F, memory);
+        if (INIT_F != "") $readmemb(INIT_F, memory);
     end
 
     wire [31:0] word_addr = {2'b0, mem_addr[31:2]};

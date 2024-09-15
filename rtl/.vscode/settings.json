@@ -1,0 +1,10 @@
+{
+	"files.associations": {
+		"CMakeLists.txt": "cmake",
+		"*.fs": "fsharp",
+		"*.html": "html",
+		"*.ipynb": "python",
+		"iostream": "cpp"
+	},
+	"C_Cpp.default.compilerPath": "g++"
+}

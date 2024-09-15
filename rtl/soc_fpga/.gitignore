@@ -1,0 +1,5 @@
+*.vcd
+**/*.asc
+**/*.bin
+**/*.dblite
+/build
