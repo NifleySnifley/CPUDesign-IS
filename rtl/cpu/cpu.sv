@@ -67,6 +67,8 @@ module cpu (
     localparam STATE_EXEC_IDX = 2;
     localparam STATE_WRITEBACK = 4'b1000;
     localparam STATE_WRITEBACK_IDX = 3;
+
+    (* onehot *)
     reg [ 3:0] state;
 
     // Register file
@@ -105,7 +107,7 @@ module cpu (
 
     // Instruction types
     wire ALU_is_register = opcode == 5'b01100;
-    wire inst_is_ALU = ALU_is_register | (opcode == 5'b00100);
+    wire inst_is_ALU = ALU_is_register || (opcode == 5'b00100);
     wire inst_is_load = ~|opcode;
     wire inst_is_store = opcode == 5'b01000;
     wire inst_is_branch = opcode == 5'b11000;
@@ -140,6 +142,7 @@ module cpu (
     reg [31:0] rs2_value;
 
     ////////////// BRANCH STUFF //////////////
+    (* onehot *)
     wire [2:0] branch_cond_type_onehot = 3'b1 << funct3[2:1];  // Equal, LT, LT(U)
     wire branch_cond_inverted = funct3[0];  // Flip output
     reg branch_test = (branch_cond_type_onehot[0] ? rs1_value == rs2_value : 1'b0) |
@@ -158,7 +161,8 @@ module cpu (
     wire [31:0] pc_next = (~jumping) ? pc_advanced : (pc_op1 + pc_op2);
 
     // TODO: Multiplex this for loads/stores
-    assign mem_addr = (state == STATE_INST_FETCH | state == STATE_WRITEBACK) ? pc : 32'b0;
+    // assign mem_addr = (state == STATE_INST_FETCH || state == STATE_WRITEBACK) ? pc : 32'b0;
+    assign mem_addr = pc;
 
     wire inst_is_exec = inst_is_ALU;  // TODO: So far ALU, add memory operations and system instructions
 
@@ -202,7 +206,7 @@ module cpu (
                     pc <= jumping ? pc_next : pc_advanced;
 
                     // Don't write to x0 (always 32'b0)
-                    if (inst_has_writeback & (|rd)) begin
+                    if (inst_has_writeback && (|rd)) begin
                         registers[rd] <= writeback_value;
                     end
 

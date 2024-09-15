@@ -17,13 +17,14 @@ module alu (
     wire [4:0] samt;
     assign samt = in2[4:0];
 
+    (* onehot *)
     wire [7:0] onehot_funct3 = 1 << funct3;
 
     // I hate this reversal...
     wire [31:0] shifter_in = shift_is_left ? {in1[0],in1[1],in1[2],in1[3],in1[4],in1[5],in1[6],in1[7],in1[8],in1[9],in1[10],in1[11],in1[12],in1[13],in1[14],in1[15],in1[16],in1[17],in1[18],in1[19],in1[20],in1[21],in1[22],in1[23],in1[24],in1[25],in1[26],in1[27],in1[28],in1[29],in1[30],in1[31]}: in1;
     wire shift_is_left = onehot_funct3[1];
     wire shifter_ext = ~shift_is_left && (funct7 == FUNCT7_SRA);
-    wire [32:0] shl = {shifter_ext, shifter_in} >>> samt;
+    wire [32:0] shl = $signed({shifter_ext, shifter_in}) >>> samt;
     wire [31:0] shifter_out = shift_is_left ? {shl[0],shl[1],shl[2],shl[3],shl[4],shl[5],shl[6],shl[7],shl[8],shl[9],shl[10],shl[11],shl[12],shl[13],shl[14],shl[15],shl[16],shl[17],shl[18],shl[19],shl[20],shl[21],shl[22],shl[23],shl[24],shl[25],shl[26],shl[27],shl[28],shl[29],shl[30],shl[31]} : shl[31:0];
 
     always_comb begin
@@ -39,4 +40,6 @@ module alu (
             default: out = 32'b0;
         endcase
     end
+    // default: out = 32'b0;
+
 endmodule
