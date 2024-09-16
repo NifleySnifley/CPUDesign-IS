@@ -22,17 +22,17 @@ module memory #(
         if (INIT_F != "") $readmemb(INIT_F, memory);
     end
 
+    wire [31:0] write_data = {
+        mem_wmask[3] ? mem_wdata[31:24] : mem_rdata[31:24],
+        mem_wmask[2] ? mem_wdata[23:16] : mem_rdata[23:16],
+        mem_wmask[1] ? mem_wdata[15:8] : mem_rdata[15:8],
+        mem_wmask[0] ? mem_wdata[7:0] : mem_rdata[7:0]
+    };
 
     wire [DEPTH_B-1:0] word_addr = mem_addr[1+DEPTH_B:2];
     always @(posedge clk) begin
         // Write port
-        if (mem_wstrobe)
-            memory[word_addr] <= {
-                mem_wmask[3] ? mem_wdata[31:24] : mem_rdata[31:24],
-                mem_wmask[2] ? mem_wdata[23:16] : mem_rdata[23:16],
-                mem_wmask[1] ? mem_wdata[15:8] : mem_rdata[15:8],
-                mem_wmask[0] ? mem_wdata[7:0] : mem_rdata[7:0]
-            };
+        if (mem_wstrobe) memory[word_addr] <= write_data;  // TODO: Implement write masking!!!
         // if (mem_rstrobe) mem_rdata <= memory[word_addr];
     end
 
