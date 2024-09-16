@@ -1,9 +1,11 @@
 `include "../fpga/debouncer.v"
-`include "../fpga/icefun_ledscan.v"
+
+`ifdef IVERILOG_LINT
 // `include "../common/defs.sv"
-// `include "../cpu/cpu.sv"
+`include "../cpu/cpu.sv"
 // `include "../alu/alu.sv"
-// `include "../common/memory.sv"
+`include "../common/memory.sv"
+`endif
 
 module soc_fpga #(
     parameter INITF = "build/program.txt"
@@ -55,10 +57,12 @@ module soc_fpga #(
     wire [31:0] mem_wdata;
     wire [31:0] mem_rdata;
     wire mem_wstrobe;
+    wire mem_rstrobe;
     wire mem_done;
     wire instruction_sync;
     wire [31:0] reg_output;
     wire [31:0] pc_output;
+    wire [3:0] mem_wmask;
 
     assign leds = reg_output[7:0];
 
@@ -66,16 +70,17 @@ module soc_fpga #(
 
     wire core_clk = clk_slow;
     memory #(
-        .WIDTH (32),
         .INIT_F(INITF),
-        .DEPTH (256)
+        .SIZE  (8192 / 32)
     ) mem (
         .clk(core_clk),
         .mem_addr,
         .mem_wdata,
         .mem_rdata,
         .mem_done,
-        .mem_wstrobe
+        .mem_wstrobe,
+        .mem_rstrobe,
+        .mem_wmask
     );
 
     cpu core0 (
@@ -83,9 +88,11 @@ module soc_fpga #(
         .rst,
         .mem_addr,
         .mem_wdata,
+        .mem_wmask,
         .mem_rdata,
         .mem_done,
         .mem_wstrobe,
+        .mem_rstrobe,
         .instruction_sync,
         .dbg_output(reg_output),
         .dbg_pc(pc_output)

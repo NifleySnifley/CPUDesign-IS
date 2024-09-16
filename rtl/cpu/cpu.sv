@@ -1,7 +1,10 @@
 // `include "../alu/alu.sv"
 
 `ifdef IVERILOG_LINT
+// `include "../common/defs.sv"
 `include "../alu/alu.sv"
+`else
+// `include "defs.sv"
 `endif
 
 module cpu (
@@ -10,52 +13,21 @@ module cpu (
 
     // Memory interface
     output wire [31:0] mem_addr,
-    output reg [31:0] mem_wdata,
+    output wire [31:0] mem_wdata,
+    output wire [3:0] mem_wmask,
     input [31:0] mem_rdata,
-    output reg mem_wstrobe,
+    output wire mem_wstrobe,
+    output wire mem_rstrobe,
     input wire mem_done,  // Read or write done
 
     // Debugging outputs
     output wire instruction_sync,
-    output wire [31:0] dbg_output,
+    output reg [31:0] dbg_output,
     output wire [31:0] dbg_pc
 );
-    wire [31:0] reg_dbg_x0 = registers[0];
-    wire [31:0] reg_dbg_x1 = registers[1];
-    wire [31:0] reg_dbg_x2 = registers[2];
-    wire [31:0] reg_dbg_x3 = registers[3];
-    wire [31:0] reg_dbg_x4 = registers[4];
-    wire [31:0] reg_dbg_x5 = registers[5];
-    wire [31:0] reg_dbg_x6 = registers[6];
-    wire [31:0] reg_dbg_x7 = registers[7];
-    wire [31:0] reg_dbg_x8 = registers[8];
-    wire [31:0] reg_dbg_x9 = registers[9];
-    wire [31:0] reg_dbg_x10 = registers[10];
-    wire [31:0] reg_dbg_x11 = registers[11];
-    wire [31:0] reg_dbg_x12 = registers[12];
-    wire [31:0] reg_dbg_x13 = registers[13];
-    wire [31:0] reg_dbg_x14 = registers[14];
-    wire [31:0] reg_dbg_x15 = registers[15];
-    wire [31:0] reg_dbg_x16 = registers[16];
-    wire [31:0] reg_dbg_x17 = registers[17];
-    wire [31:0] reg_dbg_x18 = registers[18];
-    wire [31:0] reg_dbg_x19 = registers[19];
-    wire [31:0] reg_dbg_x20 = registers[20];
-    wire [31:0] reg_dbg_x21 = registers[21];
-    wire [31:0] reg_dbg_x22 = registers[22];
-    wire [31:0] reg_dbg_x23 = registers[23];
-    wire [31:0] reg_dbg_x24 = registers[24];
-    wire [31:0] reg_dbg_x25 = registers[25];
-    wire [31:0] reg_dbg_x26 = registers[26];
-    wire [31:0] reg_dbg_x27 = registers[27];
-    wire [31:0] reg_dbg_x28 = registers[28];
-    wire [31:0] reg_dbg_x29 = registers[29];
-    wire [31:0] reg_dbg_x30 = registers[30];
-    wire [31:0] reg_dbg_x31 = registers[31];
+    // Debugging stuff
     assign instruction_sync = (state == STATE_INST_FETCH) & clk;  // High when instruction finishes
-    assign dbg_output = registers[10];
     assign dbg_pc = pc;
-
 
 
     // Processor state (one-hot)
@@ -72,7 +44,8 @@ module cpu (
     reg [ 3:0] state;
 
     // Register file
-    reg [31:0] registers[0:31];
+    (* no_rw_check *)
+    reg [31:0] registers[31:0];
     initial begin
         registers[0] = 0;
     end
@@ -91,8 +64,8 @@ module cpu (
     wire [4:0] rs1 = instruction[19:15];
     wire [4:0] rs2 = instruction[24:20];
 
-    wire inst_has_rs1 = ~(inst_is_lui || inst_is_auipc || inst_is_jal);
-    wire inst_has_rs2 = ALU_is_register || inst_is_store || inst_is_branch;
+    // wire inst_has_rs1 = ~(inst_is_lui || inst_is_auipc || inst_is_jal);
+    // wire inst_has_rs2 = ALU_is_register || inst_is_store || inst_is_branch;
 
     // Immediates
     wire [31:0] imm_s = {{20{instruction[31]}}, instruction[31:25], instruction[11:7]};
@@ -105,10 +78,13 @@ module cpu (
         {12{instruction[31]}}, instruction[19:12], instruction[20], instruction[30:21], 1'b0
     };
 
+    wire [2:0] loadstore_size_onehot = 3'b1 << funct3[1:0];
+    wire load_signext = funct3[2];
+
     // Instruction types
     wire ALU_is_register = opcode == 5'b01100;
     wire inst_is_ALU = ALU_is_register || (opcode == 5'b00100);
-    wire inst_is_load = ~|opcode;
+    wire inst_is_load = opcode == 5'b00000;
     wire inst_is_store = opcode == 5'b01000;
     wire inst_is_branch = opcode == 5'b11000;
     wire inst_is_jal = opcode == 5'b11011;
@@ -162,26 +138,54 @@ module cpu (
 
     // TODO: Multiplex this for loads/stores
     // assign mem_addr = (state == STATE_INST_FETCH || state == STATE_WRITEBACK) ? pc : 32'b0;
-    assign mem_addr = pc;
 
-    wire inst_is_exec = inst_is_ALU;  // TODO: So far ALU, add memory operations and system instructions
+    wire [31:0] loadstore_addr = rs1_value + (inst_is_store ? imm_s : imm_i);
+    assign mem_addr = ((inst_is_load || inst_is_store) && (state[STATE_DECODE_IDX] || state[STATE_WRITEBACK_IDX] || state[STATE_EXEC_IDX])) ? loadstore_addr : pc;
+    wire [1:0] mem_loadstore_offset = loadstore_addr[1:0];
+    // TODO: Actually use this read strobe
+    assign mem_rstrobe = inst_is_load && state[STATE_EXEC_IDX] || state[STATE_INST_FETCH_IDX];  // Always for just mem reads!
+    assign mem_wstrobe = inst_is_store && state[STATE_EXEC_IDX];
+
+    // Bytewise shifting for write alignment bytes and half
+    // FIXME: This will can pottentially cause partial/scrambled words to be written if unaligned accesses are attempted with words/halfs
+    assign mem_wdata = {
+        mem_loadstore_offset[0] ? rs2_value[7:0] : mem_loadstore_offset[1] ? rs2_value[15:8] : rs2_value[31:24],
+        mem_loadstore_offset[1] ? rs2_value[7:0] : rs2_value[23:16],
+        mem_loadstore_offset[0] ? rs2_value[7:0] : rs2_value[15:8],
+        rs2_value[7:0]
+    };
+
+    assign mem_wmask = (loadstore_size_onehot[2] ? 4'b1111 : 0) | 
+                        (loadstore_size_onehot[1] ? (mem_loadstore_offset[1] ? 4'b1100 : 4'b0011) : 0) |
+                        (loadstore_size_onehot[0] ? (
+                            mem_loadstore_offset[0] ? (mem_loadstore_offset[1] ? 4'b1000:4'b0010): (mem_loadstore_offset[1] ? 4'b0100:4'b0001) 
+                        ) : 0);
+
+    wire [7:0] load_byte = mem_loadstore_offset[0] ? (mem_loadstore_offset[1] ? mem_rdata[31:24]:mem_rdata[15:8]): (mem_loadstore_offset[1] ? mem_rdata[23:16]:mem_rdata[7:0]);
+    wire [15:0] load_half = mem_loadstore_offset[1] ? mem_rdata[31:16] : mem_rdata[15:0];
+    wire [31:0] load_value = (loadstore_size_onehot[0] ? ({load_signext ? {24{load_byte[7]}}:24'b0, load_byte}) : 32'b0) |
+                            (loadstore_size_onehot[1] ? ({load_signext ? {16{load_half[15]}}:16'b0, load_half}) : 32'b0) |
+                            (loadstore_size_onehot[2] ? mem_rdata : 32'b0);
+
+    wire inst_is_exec = inst_is_ALU || inst_is_load || inst_is_store;  // TODO: So far ALU, add memory operations and system instructions
 
     wire inst_has_writeback = ~(inst_is_branch || inst_is_store);
     // reg [31:0] writeback_value;
     wire [31:0] writeback_value = (inst_is_lui ? imm_u : 32'b0) | 
         (inst_is_auipc ? (imm_u + pc) : 32'b0) | 
         ((inst_is_jal | inst_is_jalr) ? pc_advanced : 32'b0) | 
-        (inst_is_ALU ? alu_out : 32'b0);
+        (inst_is_ALU ? alu_out : 32'b0) | 
+        (inst_is_load ? load_value : 32'b0);
 
-    wire exec_done = inst_is_ALU;
+    wire exec_done = inst_is_ALU || ((inst_is_load || inst_is_store) && mem_done);
 
     always @(posedge clk) begin
         if (rst) begin
             instruction <= 32'b0;
             state <= STATE_INST_FETCH;
             pc <= 32'b0;
-            mem_wstrobe <= 1'b0;
-            mem_wdata <= 32'b0;
+            // mem_wstrobe <= 1'b0;
+            // mem_wdata <= 32'b0;
         end else begin
             unique case (1'b1)
                 state[STATE_INST_FETCH_IDX]: begin
@@ -193,8 +197,8 @@ module cpu (
                     end
                 end
                 state[STATE_DECODE_IDX]: begin
-                    if (inst_has_rs1) rs1_value <= registers[rs1];
-                    if (inst_has_rs2) rs2_value <= registers[rs2];
+                    rs1_value <= registers[rs1];
+                    rs2_value <= registers[rs2];
 
                     state <= inst_is_exec ? STATE_EXEC : STATE_WRITEBACK;
                 end
@@ -205,10 +209,11 @@ module cpu (
                 state[STATE_WRITEBACK_IDX]: begin
                     pc <= jumping ? pc_next : pc_advanced;
 
-                    // Don't write to x0 (always 32'b0)
                     if (inst_has_writeback && (|rd)) begin
                         registers[rd] <= writeback_value;
                     end
+
+                    dbg_output <= registers[10];
 
                     state <= STATE_INST_FETCH;
                 end

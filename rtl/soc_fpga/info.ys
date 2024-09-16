@@ -1,0 +1,7 @@
+read_verilog -I./ -I../common -sv ../cpu/cpu.sv ../alu/alu.sv ./soc_fpga.sv ../common/memory.sv;
+hierarchy -check;
+proc;
+opt;
+fsm;
+opt;
+show -width cpu;

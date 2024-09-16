@@ -13,11 +13,13 @@ module soc_sim #(
     wire [31:0] mem_addr;
     wire [31:0] mem_wdata;
     wire [31:0] mem_rdata;
+    wire [3:0] mem_wmask;
     wire mem_wstrobe;
+    wire mem_rstrobe;
     wire mem_done;
 
     memory #(
-        .WIDTH (32),
+        .SIZE  (8192),
         .INIT_F(INITF)
     ) mem (
         .clk,
@@ -25,7 +27,9 @@ module soc_sim #(
         .mem_wdata,
         .mem_rdata,
         .mem_done,
-        .mem_wstrobe
+        .mem_wstrobe,
+        .mem_rstrobe,
+        .mem_wmask
     );
 
     wire [31:0] dbg_output;
@@ -39,8 +43,10 @@ module soc_sim #(
         .mem_rdata,
         .mem_done,
         .mem_wstrobe,
+        .mem_rstrobe,
         .instruction_sync,
         .dbg_output,
-        .dbg_pc
+        .dbg_pc,
+        .mem_wmask
     );
 endmodule

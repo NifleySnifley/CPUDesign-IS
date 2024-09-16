@@ -26,24 +26,30 @@ DEVICE=hx8k # Upduino: up5k, iceFUN: hx8k
 PACKAGE=cb132 # Upduino: sg48, iceFUN: cb132
 PROGTOOL=iceFUNprog #Upduino: "iceprog -d i:0x0403:0x6014", iceFUN: iceFUNprog
 
-SRCFILES=../common/defs.sv ../cpu/cpu.sv ../alu/alu.sv ./soc_fpga.sv
+SRCFILES=../cpu/cpu.sv ../alu/alu.sv ./soc_fpga.sv ../common/memory.sv
 PROJNAME=soc_fpga
 TOPNAME=$(PROJNAME)
+PNR_ARGS=--$(DEVICE) --package $(PACKAGE) --json $(BUILDDIR)/$(PROJNAME).json --pcf ./$(PROJNAME).pcf --asc $(BUILDDIR)/$(PROJNAME).asc
 
 $(BUILDDIR)/$(PROJNAME).bin: $(BUILDDIR) $(BUILDDIR)/$(PROJNAME).asc 
 	icepack $(BUILDDIR)/$(PROJNAME).asc $(BUILDDIR)/$(PROJNAME).bin
 
 $(BUILDDIR)/$(PROJNAME).asc: $(BUILDDIR) $(BUILDDIR)/$(PROJNAME).json ./$(PROJNAME).pcf 
-	nextpnr-ice40 --$(DEVICE) --package $(PACKAGE) --json $(BUILDDIR)/$(PROJNAME).json --pcf ./$(PROJNAME).pcf --asc $(BUILDDIR)/$(PROJNAME).asc   # run place and route
+	nextpnr-ice40 $(PNR_ARGS)
 
-$(BUILDDIR)/$(PROJNAME).json: $(BUILDDIR) $(SRCFILES) $(COMMONDIR)/*.sv $(BUILDDIR)/program.txt
-	yosys -q -p "read_verilog -I./ -I$(COMMONDIR) -sv $(SRCFILES) $(COMMONDIR)/*.sv; synth_ice40 -top $(TOPNAME) -json $(BUILDDIR)/$(PROJNAME).json" 
+$(BUILDDIR)/$(PROJNAME).json: $(BUILDDIR) $(SRCFILES) $(BUILDDIR)/program.txt
+	yosys -q -p "read_verilog -I./ -I$(COMMONDIR) -sv $(SRCFILES); synth_ice40 -top $(TOPNAME) -json $(BUILDDIR)/$(PROJNAME).json" 
 
 $(BUILDDIR)/program.txt: $(PROGRAM)
 	$(ASSEMBLER) $(PROGRAM) -o $(BUILDDIR)/program.txt
 
 $(BUILDDIR):
 	mkdir -p $(BUILDDIR)
+
+.PHONY: view
+view:
+	nextpnr-ice40 $(PNR_ARGS) --gui
+
 
 .PHONY: flash
 flash:

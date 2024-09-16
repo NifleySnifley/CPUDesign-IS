@@ -1,0 +1,8 @@
+read_verilog -I./ -I../common -sv ../cpu/cpu.sv ../alu/alu.sv;
+hierarchy -check;
+proc;
+opt;
+fsm;
+opt;
+synth_ice40 -top cpu;
+stat;
