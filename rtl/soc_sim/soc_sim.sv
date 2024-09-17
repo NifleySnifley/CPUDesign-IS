@@ -19,7 +19,7 @@ module soc_sim #(
     wire mem_done;
 
     memory #(
-        .SIZE  (8192),
+        .SIZE  (2048),  // WORDS
         .INIT_F(INITF)
     ) mem (
         .clk,

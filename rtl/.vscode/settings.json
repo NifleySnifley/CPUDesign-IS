@@ -4,7 +4,8 @@
 		"*.fs": "fsharp",
 		"*.html": "html",
 		"*.ipynb": "python",
-		"iostream": "cpp"
+		"iostream": "cpp",
+		"new": "cpp"
 	},
 	"C_Cpp.default.compilerPath": "g++"
 }

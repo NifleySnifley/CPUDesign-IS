@@ -2,7 +2,7 @@
 
 `ifdef IVERILOG_LINT
 // `include "../common/defs.sv"
-`include "../alu/alu.sv"
+// `include "../alu/alu.sv"
 `else
 // `include "defs.sv"
 `endif
@@ -21,12 +21,12 @@ module cpu (
     input wire mem_done,  // Read or write done
 
     // Debugging outputs
-    output wire instruction_sync,
+    output reg instruction_sync,
     output reg [31:0] dbg_output,
     output wire [31:0] dbg_pc
 );
     // Debugging stuff
-    assign instruction_sync = (state == STATE_INST_FETCH) & clk;  // High when instruction finishes
+    // assign instruction_sync = (state == STATE_INST_FETCH) & clk;  // High when instruction finishes
     assign dbg_pc = pc;
 
 
@@ -97,7 +97,7 @@ module cpu (
     wire [2:0] funct3 = instruction[14:12];
     // HACK: funct7 only NEEDS to be 0 when adding immediates AFAIK
     // Because the only instructions that use funct7 are shifts (mask the funct7 bits of the immediate) and add (0x20 for sub on REGISTER ONLY)
-    wire [6:0] funct7 = (ALU_is_register || (~|funct3)) ? instruction[31:25] : 7'b0;
+    wire [6:0] funct7 = instruction[31:25];
 
     wire [31:0] alu_op1 = rs1_value;
     wire [31:0] alu_op2 = ALU_is_register ? rs2_value : imm_i;
@@ -107,6 +107,7 @@ module cpu (
     alu _alu (
         .in1(alu_op1),
         .in2(alu_op2),
+        .is_imm(~ALU_is_register),
         .out(alu_out),
         .clk,
         .rst,
@@ -119,14 +120,14 @@ module cpu (
 
     ////////////// BRANCH STUFF //////////////
     (* onehot *)
-    wire [2:0] branch_cond_type_onehot = 3'b1 << funct3[2:1];  // Equal, LT, LT(U)
+    wire [3:0] branch_cond_type_onehot = 3'b1 << funct3[2:1];  // Equal, LT, LT(U)
     wire branch_cond_inverted = funct3[0];  // Flip output
     reg branch_test = (branch_cond_type_onehot[0] ? rs1_value == rs2_value : 1'b0) |
-    (branch_cond_type_onehot[1] ? $signed(
+    (branch_cond_type_onehot[2] ? $signed(
         rs1_value
     ) < $signed(
         rs2_value
-    ) : 1'b0) | (branch_cond_type_onehot[2] ? rs1_value < rs2_value : 1'b0);  // Lt (U)
+    ) : 1'b0) | (branch_cond_type_onehot[3] ? rs1_value < rs2_value : 1'b0);  // Lt (U)
     wire branch_cond = branch_test ^ branch_cond_inverted;
 
     ////////////// PC STUFF //////////////
@@ -189,6 +190,7 @@ module cpu (
         end else begin
             unique case (1'b1)
                 state[STATE_INST_FETCH_IDX]: begin
+                    instruction_sync <= 1'b0;
                     if (mem_done) begin
                         instruction <= mem_rdata;
                         state <= STATE_DECODE;
@@ -216,6 +218,7 @@ module cpu (
                     dbg_output <= registers[10];
 
                     state <= STATE_INST_FETCH;
+                    instruction_sync <= 1'b1;
                 end
                 default: state <= STATE_INST_FETCH;
             endcase

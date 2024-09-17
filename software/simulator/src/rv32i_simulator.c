@@ -506,6 +506,7 @@ int rv_simulator_load_memory_from_file(rv_simulator_t* sim, const char* filename
     rewind(binfile);
 
     if (binsize > sim->mem_size) {
+        printf("Error, memory file is larger than simulator memory! (file=%d, memory=%d)\n", binsize, sim->mem_size);
         return -2;
     }
 
