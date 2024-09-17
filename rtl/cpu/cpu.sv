@@ -79,7 +79,7 @@ module cpu (
     };
 
     wire [2:0] loadstore_size_onehot = 3'b1 << funct3[1:0];
-    wire load_signext = funct3[2];
+    wire load_signext = ~funct3[2];
 
     // Instruction types
     wire ALU_is_register = opcode == 5'b01100;
