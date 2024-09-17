@@ -31,7 +31,9 @@ module memory #(
             if (mem_wmask[2]) memory[word_addr][23:16] <= mem_wdata[23:16];
             if (mem_wmask[3]) memory[word_addr][31:24] <= mem_wdata[31:24];
         end
-        mem_rdata <= memory[word_addr];
+        if (mem_rstrobe) begin
+            mem_rdata <= memory[word_addr];
+        end
     end
 
 endmodule

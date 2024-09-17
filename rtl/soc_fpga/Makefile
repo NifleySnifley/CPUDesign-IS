@@ -24,7 +24,7 @@ BUILDDIR=./build
 
 DEVICE=hx8k # Upduino: up5k, iceFUN: hx8k
 PACKAGE=cb132 # Upduino: sg48, iceFUN: cb132
-PROGTOOL=iceFUNprog #Upduino: "iceprog -d i:0x0403:0x6014", iceFUN: iceFUNprog
+PROGTOOL=icefunprog #Upduino: "iceprog -d i:0x0403:0x6014", iceFUN: iceFUNprog
 
 SRCFILES=../cpu/cpu.sv ../alu/alu.sv ./soc_fpga.sv ../common/memory.sv
 PROJNAME=soc_fpga
