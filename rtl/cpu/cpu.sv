@@ -31,17 +31,19 @@ module cpu (
 
 
     // Processor state (one-hot)
-    localparam STATE_INST_FETCH = 4'b0001;
-    localparam STATE_INST_FETCH_IDX = 0;
-    localparam STATE_DECODE = 4'b0010;
-    localparam STATE_DECODE_IDX = 1;
-    localparam STATE_EXEC = 4'b0100;
-    localparam STATE_EXEC_IDX = 2;
-    localparam STATE_WRITEBACK = 4'b1000;
-    localparam STATE_WRITEBACK_IDX = 3;
+    localparam STATE_INST_FETCH = 5'b00010;
+    localparam STATE_INST_FETCH_IDX = 1;
+    localparam STATE_DECODE = 5'b00100;
+    localparam STATE_DECODE_IDX = 2;
+    localparam STATE_EXEC = 5'b01000;
+    localparam STATE_EXEC_IDX = 3;
+    localparam STATE_WRITEBACK = 5'b10000;
+    localparam STATE_WRITEBACK_IDX = 4;
+    localparam STATE_INST_WAIT = 5'b00001;
+    localparam STATE_INST_WAIT_IDX = 0;
 
     (* onehot *)
-    reg [ 3:0] state;
+    reg [ 4:0] state;
 
     // Register file
     (* no_rw_check *)
@@ -141,7 +143,9 @@ module cpu (
     // assign mem_addr = (state == STATE_INST_FETCH || state == STATE_WRITEBACK) ? pc : 32'b0;
 
     wire [31:0] loadstore_addr = rs1_value + (inst_is_store ? imm_s : imm_i);
-    assign mem_addr = ((inst_is_load || inst_is_store) && (state[STATE_DECODE_IDX] || state[STATE_WRITEBACK_IDX] || state[STATE_EXEC_IDX])) ? loadstore_addr : pc;
+    // assign mem_addr = ((inst_is_load || inst_is_store) && (state[STATE_DECODE_IDX] || state[STATE_WRITEBACK_IDX] || state[STATE_EXEC_IDX])) ? loadstore_addr : pc;
+    // TODO: Fix address assignment for instruction fetching with synchronous memory.
+    assign mem_addr = (state[STATE_INST_FETCH_IDX] || state[STATE_WRITEBACK_IDX]) ? pc : ((inst_is_store || inst_is_load) ? loadstore_addr : pc);
     wire [1:0] mem_loadstore_offset = loadstore_addr[1:0];
     // TODO: Actually use this read strobe
     assign mem_rstrobe = inst_is_load && state[STATE_EXEC_IDX] || state[STATE_INST_FETCH_IDX];  // Always for just mem reads!
@@ -191,11 +195,14 @@ module cpu (
             unique case (1'b1)
                 state[STATE_INST_FETCH_IDX]: begin
                     instruction_sync <= 1'b0;
+                    state <= STATE_INST_WAIT;  // One cycle address load
+                end
+                state[STATE_INST_WAIT_IDX]: begin
                     if (mem_done) begin
                         instruction <= mem_rdata;
                         state <= STATE_DECODE;
                     end else begin
-                        state <= STATE_INST_FETCH;
+                        state <= STATE_INST_WAIT;
                     end
                 end
                 state[STATE_DECODE_IDX]: begin

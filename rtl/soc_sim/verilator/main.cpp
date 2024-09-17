@@ -10,6 +10,7 @@
 #include "obj_dir/Vsoc_sim.h"
 #include "obj_dir/Vsoc_sim___024unit.h"
 #include "obj_dir/Vsoc_sim___024root.h"
+#include <chrono>
 
 extern "C" {
 #include "../../../software/simulator/src/rv32i_simulator.h"
@@ -19,7 +20,7 @@ extern "C" {
 #define EXIT_ERROR 1
 #define EXIT_FAIL 2
 #define RESET_TIME 11
-#define OPTS "t:vqdnl:r:eb:i"
+#define OPTS "t:vqdnl:r:eb:is"
 vluint64_t sim_time = 0;
 
 vluint64_t instructions_executed;
@@ -27,6 +28,7 @@ vlsint64_t insn_limit = 0;
 bool quiet;
 bool verbose;
 bool dump;
+bool stats;
 bool no_exit_on_fail;
 bool independent;
 
@@ -55,16 +57,17 @@ bool simulator_equals_dut(Vsoc_sim* dut, rv_simulator_t* sim) {
         }
     }
 
-    // for (int wa = 0; wa < sim->mem_size / 4; ++wa) {
-    //     if (simulator_read_word(sim, wa * 4) != dut->rootp->soc_sim__DOT__mem__DOT__memory[wa]) {
-    //         printf("Mismatch of memory word @ %x: sim=%u, dut=%u\n", wa * 4, simulator_read_word(sim, wa * 4), dut->rootp->soc_sim__DOT__mem__DOT__memory[wa]);
-    //         return false;
-    //     }
-    // }
+    for (int wa = 0; wa < sim->mem_size / 4; ++wa) {
+        if (simulator_read_word(sim, wa * 4) != dut->rootp->soc_sim__DOT__mem__DOT__memory[wa]) {
+            printf("Mismatch of memory word @ %x: sim=%u, dut=%u\n", wa * 4, simulator_read_word(sim, wa * 4), dut->rootp->soc_sim__DOT__mem__DOT__memory[wa]);
+            return false;
+        }
+    }
 
     return true;
 }
 
+// TODO: Register and instruction type heatmaps for stats
 void sim_tracefn(void* sim, const char* insname) {
     if (verbose) printf("SIMULATOR:INSN: %s\n", insname);
 }
@@ -113,6 +116,9 @@ int main(int argc, char** argv, char** env) {
                 break;
             case 'i':
                 independent = true;
+                break;
+            case 's':
+                stats = true;
                 break;
             case 'b':
             {
@@ -177,7 +183,7 @@ int main(int argc, char** argv, char** env) {
 
     // Copy initialization memory from sim to DUT
     for (int i = 0; i < memsize_words; ++i) {
-        uint32_t word = (i < binsize_words) ? simulator_read_word(&simulator, i * 4) : 0;
+        uint32_t word = simulator_read_word(&simulator, i * 4);
         dut->rootp->soc_sim__DOT__mem__DOT__memory[i] = word;
     }
 
@@ -223,6 +229,7 @@ int main(int argc, char** argv, char** env) {
     bool fail = false;
     vluint64_t run_start = sim_time;
     uint32_t dut_prevpc = dut->rootp->soc_sim__DOT__core0__DOT__pc;
+    std::chrono::time_point start_time = std::chrono::high_resolution_clock::now();
 
     while (true) {
         dut->clk = 0;
@@ -277,6 +284,9 @@ int main(int argc, char** argv, char** env) {
         }
     }
 
+    std::chrono::time_point end_time = std::chrono::high_resolution_clock::now();
+    int64_t ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+
     const char* resultstr = fail ? "\x1b[31mxFAIL\x1b[0m/" : "\x1b[32mSUCCESS\x1b[0m";
     if (!quiet) printf("\n================================ %s ================================\n\n", resultstr);
 
@@ -292,6 +302,20 @@ int main(int argc, char** argv, char** env) {
         dut_pprint_registers(dut);
         printf("DUT memory:\n");
         dut_pprint_memory(dut);
+    }
+
+    if (stats) {
+        vluint64_t cycles_total = (sim_time - run_start) / 2;
+        float cpi = ((float)cycles_total) / instructions_executed;
+        printf("Stats:\n");
+        printf("\tInstructions executed: %lu\n", instructions_executed);
+        printf("\tProcessor cycles: %lu\n", cycles_total);
+        printf("\tAvg. cycles per instruction: %.4f\n", cpi);
+        double insps = ((double)instructions_executed / (double)ms) * 1000;
+        double cycps = ((double)cycles_total / (double)ms) * 1000;
+        printf("\tSimulation time (ms): %ld\n", ms);
+        printf("\tAvg. instructions per sim-second: %f\n", insps);
+        printf("\tAvg. cycles per sim-second: %f\n", cycps);
     }
 
     if (tracefile != nullptr)m_trace->close();
