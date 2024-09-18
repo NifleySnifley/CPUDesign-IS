@@ -11,9 +11,10 @@ module soc_sim #(
     wire bus_wen;
     wire bus_ren;
     wire bus_done;
-    wire [31:0] reg_output;
     wire [31:0] pc_output;
     wire [3:0] bus_wmask;
+
+    wire mem_active;
 
     memory #(
         .SIZE(2048)
@@ -25,7 +26,8 @@ module soc_sim #(
         .mem_wstrobe(bus_wen),
         .mem_rstrobe(bus_ren),
         .mem_rdata(bus_rdata),
-        .mem_done(bus_done)
+        .mem_done(bus_done),
+        .active(mem_active)
     );
 
     cpu core0 (
@@ -39,7 +41,6 @@ module soc_sim #(
         .bus_wen,
         .bus_ren,
         .instruction_sync,
-        .dbg_output(reg_output),
         .dbg_pc(pc_output)
     );
 endmodule
