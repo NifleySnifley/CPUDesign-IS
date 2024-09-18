@@ -33,13 +33,12 @@ def annotate(stdout: str, program: bytes) -> str:
 		return f"(pc={m.group(1)}, sim_pc={m.group(2)}) >>> \x1b[3mdut:{dis_insn(int(m.group(1)))}, sim:{dis_insn(int(m.group(2)))}\x1b[0m"
 	return re.sub(r"\(pc=([0-9a-f]+), sim_pc=([0-9a-f]+)\)", repfn, stdout)
 
-# if __name__ == "__main__":
-# 	print(dissasemble(open("../../../software/simulator/test/build/addi.bin", 'rb').read()))
-# 	exit(0)
-
 print("Assembling test programs... ", end='', flush=True)
 tests_dir = script_dir/"../../../software/simulator/test"
-subprocess.run(["make", "assemble"], cwd=tests_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+err = subprocess.call(["python3", "assembletests.py"], cwd=tests_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+if (err):
+    print("Error assembling tests")
+    exit(1)
 print("done!")
 
 tests_binary_dir = tests_dir/"build"

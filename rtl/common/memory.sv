@@ -11,18 +11,25 @@ module memory #(
 
     input wire mem_rstrobe,
     output reg [31:0] mem_rdata,  // Read data output
-    output wire mem_done  // Read or write done
+    output wire mem_done,  // Read or write done
+
+    // TODO: Add base address to parameters
+    output wire active
 );
     reg [31:0] memory[SIZE-1:0];
     localparam DEPTH_B = $clog2(SIZE);
 
-    assign mem_done = 1'b1;  // HUHHH yes
+    reg [DEPTH_B-1:0] xact_addr;
+
+    assign mem_done = word_addr == xact_addr;  // HUHHH yes
 
     initial begin
         if (INIT_F != "") $readmemb(INIT_F, memory);
     end
 
     wire [DEPTH_B-1:0] word_addr = mem_addr[1+DEPTH_B:2];
+    assign active = word_addr < SIZE;
+
     always @(posedge clk) begin
         // NOTE: WRITE PORT (sync)
         if (mem_wstrobe) begin
@@ -34,6 +41,7 @@ module memory #(
         if (mem_rstrobe) begin
             mem_rdata <= memory[word_addr];
         end
-    end
 
+        if (mem_rstrobe | mem_wstrobe) xact_addr <= word_addr;
+    end
 endmodule

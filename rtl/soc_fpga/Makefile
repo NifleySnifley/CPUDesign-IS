@@ -17,16 +17,16 @@
 # 	mkdir -p build
 
 ASSEMBLER=../../software/simulator/asm2bin.py
-PROGRAM=../../software/programs/assembly/test_program.S
+PROGRAM=program.S
 
 COMMONDIR=../common
 BUILDDIR=./build
 
 DEVICE=hx8k # Upduino: up5k, iceFUN: hx8k
 PACKAGE=cb132 # Upduino: sg48, iceFUN: cb132
-PROGTOOL=icefunprog #Upduino: "iceprog -d i:0x0403:0x6014", iceFUN: iceFUNprog
+PROGTOOL=iceFUNprog #Upduino: "iceprog -d i:0x0403:0x6014", iceFUN: iceFUNprog
 
-SRCFILES=../cpu/cpu.sv ../alu/alu.sv ./soc_fpga.sv ../common/memory.sv
+SRCFILES=../cpu/cpu.sv ../alu/alu.sv ./soc_fpga.sv ../common/memory.sv ../common/bus_hub_1.sv ../common/bus_hub_2.sv ../fpga/parallel_port.sv
 PROJNAME=soc_fpga
 TOPNAME=$(PROJNAME)
 PNR_ARGS=--$(DEVICE) --package $(PACKAGE) --json $(BUILDDIR)/$(PROJNAME).json --pcf ./$(PROJNAME).pcf --asc $(BUILDDIR)/$(PROJNAME).asc

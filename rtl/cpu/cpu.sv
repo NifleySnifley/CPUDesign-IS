@@ -1,10 +1,7 @@
 // `include "../alu/alu.sv"
 
 `ifdef IVERILOG_LINT
-// `include "../common/defs.sv"
-// `include "../alu/alu.sv"
-`else
-// `include "defs.sv"
+`include "../alu/alu.sv"
 `endif
 
 module cpu (
@@ -12,38 +9,34 @@ module cpu (
     input wire clk,
 
     // Memory interface
-    output wire [31:0] mem_addr,
-    output wire [31:0] mem_wdata,
-    output wire [3:0] mem_wmask,
-    input [31:0] mem_rdata,
-    output wire mem_wstrobe,
-    output wire mem_rstrobe,
-    input wire mem_done,  // Read or write done
+    output wire [31:0] bus_addr,
+    output wire [31:0] bus_wdata,
+    output wire [3:0] bus_wmask,
+    input [31:0] bus_rdata,
+    output wire bus_wen,
+    output wire bus_ren,
+    input wire bus_done,  // Read or write done
 
     // Debugging outputs
     output reg instruction_sync,
-    output reg [31:0] dbg_output,
     output wire [31:0] dbg_pc
 );
     // Debugging stuff
     // assign instruction_sync = (state == STATE_INST_FETCH) & clk;  // High when instruction finishes
     assign dbg_pc = pc;
 
-
     // Processor state (one-hot)
-    localparam STATE_INST_FETCH = 5'b00010;
-    localparam STATE_INST_FETCH_IDX = 1;
-    localparam STATE_DECODE = 5'b00100;
-    localparam STATE_DECODE_IDX = 2;
-    localparam STATE_EXEC = 5'b01000;
-    localparam STATE_EXEC_IDX = 3;
-    localparam STATE_WRITEBACK = 5'b10000;
-    localparam STATE_WRITEBACK_IDX = 4;
-    localparam STATE_INST_WAIT = 5'b00001;
-    localparam STATE_INST_WAIT_IDX = 0;
+    localparam STATE_INST_FETCH = 4'b0001;
+    localparam STATE_INST_FETCH_IDX = 0;
+    localparam STATE_DECODE = 4'b0010;
+    localparam STATE_DECODE_IDX = 1;
+    localparam STATE_EXEC = 4'b0100;
+    localparam STATE_EXEC_IDX = 2;
+    localparam STATE_WRITEBACK = 4'b1000;
+    localparam STATE_WRITEBACK_IDX = 3;
 
     (* onehot *)
-    reg [ 4:0] state;
+    reg [ 3:0] state;
 
     // Register file
     (* no_rw_check *)
@@ -57,7 +50,7 @@ module cpu (
 
     //////////////////// INSTRUCTION DECODING ////////////////////
     // Current instruction (@PC)
-    reg [31:0] instruction;
+    reg [31:0] instruction = 0;
 
     wire [4:0] opcode = instruction[6:2];
     wire [1:0] instruction_length = instruction[1:0];  // NOTE: MUST be 2'b11 for rv32i
@@ -139,38 +132,34 @@ module cpu (
     wire [31:0] pc_op2 = (inst_is_branch ? imm_b : 0) | (inst_is_jal ? imm_j : 0) | (inst_is_jalr ? imm_i : 0);
     wire [31:0] pc_next = (~jumping) ? pc_advanced : (pc_op1 + pc_op2);
 
-    // TODO: Multiplex this for loads/stores
-    // assign mem_addr = (state == STATE_INST_FETCH || state == STATE_WRITEBACK) ? pc : 32'b0;
-
     wire [31:0] loadstore_addr = rs1_value + (inst_is_store ? imm_s : imm_i);
-    // assign mem_addr = ((inst_is_load || inst_is_store) && (state[STATE_DECODE_IDX] || state[STATE_WRITEBACK_IDX] || state[STATE_EXEC_IDX])) ? loadstore_addr : pc;
-    // TODO: Fix address assignment for instruction fetching with synchronous memory.
-    assign mem_addr = (state[STATE_INST_FETCH_IDX] || state[STATE_WRITEBACK_IDX]) ? pc : ((inst_is_store || inst_is_load) ? loadstore_addr : pc);
+
+    assign bus_addr = (state[STATE_INST_FETCH_IDX] || state[STATE_WRITEBACK_IDX]) ? pc : ((inst_is_store || inst_is_load) ? loadstore_addr : pc);
     wire [1:0] mem_loadstore_offset = loadstore_addr[1:0];
     // TODO: Actually use this read strobe
-    assign mem_rstrobe = inst_is_load && state[STATE_EXEC_IDX] || state[STATE_INST_FETCH_IDX];  // Always for just mem reads!
-    assign mem_wstrobe = inst_is_store && state[STATE_EXEC_IDX];
+    assign bus_ren = inst_is_load && state[STATE_EXEC_IDX] || state[STATE_INST_FETCH_IDX];  // Always for just mem reads!
+    assign bus_wen = inst_is_store && state[STATE_EXEC_IDX];
 
     // Bytewise shifting for write alignment bytes and half
     // FIXME: This will can pottentially cause partial/scrambled words to be written if unaligned accesses are attempted with words/halfs
-    assign mem_wdata = {
+    assign bus_wdata = {
         mem_loadstore_offset[0] ? rs2_value[7:0] : mem_loadstore_offset[1] ? rs2_value[15:8] : rs2_value[31:24],
         mem_loadstore_offset[1] ? rs2_value[7:0] : rs2_value[23:16],
         mem_loadstore_offset[0] ? rs2_value[7:0] : rs2_value[15:8],
         rs2_value[7:0]
     };
 
-    assign mem_wmask = (loadstore_size_onehot[2] ? 4'b1111 : 0) | 
+    assign bus_wmask = (loadstore_size_onehot[2] ? 4'b1111 : 0) | 
                         (loadstore_size_onehot[1] ? (mem_loadstore_offset[1] ? 4'b1100 : 4'b0011) : 0) |
                         (loadstore_size_onehot[0] ? (
                             mem_loadstore_offset[0] ? (mem_loadstore_offset[1] ? 4'b1000:4'b0010): (mem_loadstore_offset[1] ? 4'b0100:4'b0001) 
                         ) : 0);
 
-    wire [7:0] load_byte = mem_loadstore_offset[0] ? (mem_loadstore_offset[1] ? mem_rdata[31:24]:mem_rdata[15:8]): (mem_loadstore_offset[1] ? mem_rdata[23:16]:mem_rdata[7:0]);
-    wire [15:0] load_half = mem_loadstore_offset[1] ? mem_rdata[31:16] : mem_rdata[15:0];
+    wire [7:0] load_byte = mem_loadstore_offset[0] ? (mem_loadstore_offset[1] ? bus_rdata[31:24]:bus_rdata[15:8]): (mem_loadstore_offset[1] ? bus_rdata[23:16]:bus_rdata[7:0]);
+    wire [15:0] load_half = mem_loadstore_offset[1] ? bus_rdata[31:16] : bus_rdata[15:0];
     wire [31:0] load_value = (loadstore_size_onehot[0] ? ({load_signext ? {24{load_byte[7]}}:24'b0, load_byte}) : 32'b0) |
                             (loadstore_size_onehot[1] ? ({load_signext ? {16{load_half[15]}}:16'b0, load_half}) : 32'b0) |
-                            (loadstore_size_onehot[2] ? mem_rdata : 32'b0);
+                            (loadstore_size_onehot[2] ? bus_rdata : 32'b0);
 
     wire inst_is_exec = inst_is_ALU || inst_is_load || inst_is_store;  // TODO: So far ALU, add memory operations and system instructions
 
@@ -182,27 +171,22 @@ module cpu (
         (inst_is_ALU ? alu_out : 32'b0) | 
         (inst_is_load ? load_value : 32'b0);
 
-    wire exec_done = inst_is_ALU || ((inst_is_load || inst_is_store) && mem_done);
+    wire exec_done = inst_is_ALU || ((inst_is_load || inst_is_store) && bus_done);
 
     always @(posedge clk) begin
         if (rst) begin
             instruction <= 32'b0;
             state <= STATE_INST_FETCH;
             pc <= 32'b0;
-            // mem_wstrobe <= 1'b0;
-            // mem_wdata <= 32'b0;
         end else begin
             unique case (1'b1)
                 state[STATE_INST_FETCH_IDX]: begin
                     instruction_sync <= 1'b0;
-                    state <= STATE_INST_WAIT;  // One cycle address load
-                end
-                state[STATE_INST_WAIT_IDX]: begin
-                    if (mem_done) begin
-                        instruction <= mem_rdata;
+                    if (bus_done) begin
+                        instruction <= bus_rdata;
                         state <= STATE_DECODE;
                     end else begin
-                        state <= STATE_INST_WAIT;
+                        state <= STATE_INST_FETCH;
                     end
                 end
                 state[STATE_DECODE_IDX]: begin
@@ -221,8 +205,6 @@ module cpu (
                     if (inst_has_writeback && (|rd)) begin
                         registers[rd] <= writeback_value;
                     end
-
-                    dbg_output <= registers[10];
 
                     state <= STATE_INST_FETCH;
                     instruction_sync <= 1'b1;
