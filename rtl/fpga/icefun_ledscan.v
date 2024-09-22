@@ -17,23 +17,24 @@
 
 // LedScan takes the four led columns as inputs and outputs them to the led matrix
 
-module iceFUN_LedScan (
-    input clk12MHz,
+module iceFUN_LedScan #(
+    parameter BITS_DIV = 12
+) (
+    input clk,
     input [7:0] leds1,
     input [7:0] leds2,
     input [7:0] leds3,
     input [7:0] leds4,
+
     output reg [7:0] leds,
     output reg [3:0] lcol
 );
 
-
-    /* Counter register */
-    reg [11:0] timer = 12'b0;
+    reg [BITS_DIV-1:0] timer = 0;
 
 
     always @(*) begin
-        case (timer[11:10])
+        case (timer[BITS_DIV-1:BITS_DIV-2])
             2'b00: begin
                 leds[7:0] = leds1[7:0];
                 lcol[3:0] = 4'b1110;
@@ -53,10 +54,7 @@ module iceFUN_LedScan (
         endcase
     end
 
-
-    // increment the scan timer
-    always @(posedge clk12MHz) begin
+    always @(posedge clk) begin
         timer <= timer + 1;
     end
-
 endmodule
