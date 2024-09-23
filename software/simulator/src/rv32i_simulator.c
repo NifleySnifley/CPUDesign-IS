@@ -58,12 +58,10 @@ uint32_t sra(uint32_t num, int shift_amount) {
 }
 
 int rv_simulator_step(rv_simulator_t* sim) {
-    // uint32_t inst = (sim->memory[sim->pc + 0] << 0) | \
-    //     (sim->memory[sim->pc + 1] << 8) | \
-    //     (sim->memory[sim->pc + 2] << 16) | \
-    //     (sim->memory[sim->pc + 3] << 24);
-    // FIXME: Fetch instruction word using memory interface
-    uint32_t inst;
+    uint32_t inst = (rv_simulator_read_byte(sim, sim->pc + 0) << 0) | \
+        (rv_simulator_read_byte(sim, sim->pc + 1) << 8) | \
+        (rv_simulator_read_byte(sim, sim->pc + 2) << 16) | \
+        (rv_simulator_read_byte(sim, sim->pc + 3) << 24);
 
     uint32_t imm_i = BITS(inst, 20, 31);
     uint32_t imm_s = (BITS(inst, 25, 31) << 5) | BITS(inst, 7, 11);
@@ -97,10 +95,10 @@ int rv_simulator_step(rv_simulator_t* sim) {
     // To allow for future tracing of memory/register interactions
 #define R(r) (sim->x[r])
 // #define M(a) (sim->memory[a])
-#define M(a) (sim->memory_interface.read_byte_fn(sim, a))
+#define M(a) rv_simulator_read_byte(sim, a)
 #define RSET(r, v) if(r!=0) {sim->x[r]=(v);}
 // #define MSET(a, v) TRACE_MEM_WRITE(a, v); if (a < sim->mem_size) { (sim->memory[a] = v); } else {fprintf(stderr, "Error: write address %x exceeds memory size of %x\n", a, sim->mem_size);}; 
-#define MSET(a, v) (sim->memory_interface.write_byte_fn(sim, a, v))
+#define MSET(a, v) rv_simulator_write_byte(sim, a, v)
 
     // TODO: Fix PC with returns
 
@@ -408,19 +406,27 @@ int rv_simulator_step(rv_simulator_t* sim) {
     return 0;
 }
 
+// TODO: Seek which segment is trying to be read into when using segmented model
 bool rv_simulator_load_memory(rv_simulator_t* sim, uint8_t* data, uint32_t offset, uint32_t count) {
-    if (offset + count > sim->mem_size) {
-        return true;
+    if (sim->memory_interface.type == MONOLITHIC) {
+        rv_simulator_monolithic_memory_t* mem = (rv_simulator_monolithic_memory_t*)sim->memory_interface.memory;
+        if (offset + count > mem->size) {
+            printf("Error loading memory, data is larger than simulator memory! (data=%d bytes, memory=%d bytes)\n", count, mem->size);
+            return true;
+        } else {
+            memcpy(&mem->data[offset], data, count);
+        }
+        return false;
     } else {
-        memcpy(&sim->memory[offset], data, count);
+        printf("Error! Loading memory not implemented with segmented memory model");
     }
-    return false;
 }
 
 void rv_simulator_init_monolithic_memory(rv_simulator_t* sim, uint32_t mem_size) {
     rv_simulator_monolithic_memory_t* mem = (rv_simulator_monolithic_memory_t*)calloc(1, sizeof(rv_simulator_monolithic_memory_t));
     rv_simulator_monolithic_memory_init(mem, mem_size);
     sim->memory_interface.memory = mem;
+    sim->memory_interface.type = MONOLITHIC;
     sim->memory_interface.read_byte_fn = rv_simulator_monolithic_memory_read;
     sim->memory_interface.write_byte_fn = rv_simulator_monolithic_memory_write;
 }
@@ -429,6 +435,9 @@ void rv_simulator_init(rv_simulator_t* sim) {
     sim->err_trace = NULL;
     sim->cond_trace = NULL;
     sim->instr_trace = NULL;
+
+    sim->pc = 0;
+    memset(sim->x, 0, sizeof(sim->x));
 
     sim->bkpt_fn = NULL;
     sim->scall_fn = NULL;
@@ -456,6 +465,15 @@ int rv_simulator_dump_regs(rv_simulator_t* sim, FILE* regfile) {
     }
     fflush(regfile);
     return 0;
+}
+
+uint32_t rv_simulator_total_memory_size(rv_simulator_t* sim) {
+    if (sim->memory_interface.type == MONOLITHIC) {
+        rv_simulator_monolithic_memory_t* mem = (rv_simulator_monolithic_memory_t*)sim->memory_interface.memory;
+        return mem->size;
+    } else {
+        return 0; // TODO: Implement!
+    }
 }
 
 // FIXME: Fix for different memory implementations
@@ -504,14 +522,11 @@ int rv_simulator_load_memory_from_file(rv_simulator_t* sim, const char* filename
     int binsize = ftell(binfile);
     rewind(binfile);
 
-    if (binsize > sim->mem_size) {
-        printf("Error, memory file is larger than simulator memory! (file=%d, memory=%d)\n", binsize, sim->mem_size);
-        return -2;
-    }
+    uint8_t* buffer = (uint8_t*)malloc(binsize);
 
     int idx = 0;
     do {
-        int n = fread(&sim->memory[idx], 1, binsize - idx, binfile);
+        int n = fread(&buffer[idx], 1, binsize - idx, binfile);
         if (n == -1) {
             fprintf(stderr, "Error reading file!\n");
             return -4;
@@ -520,11 +535,41 @@ int rv_simulator_load_memory_from_file(rv_simulator_t* sim, const char* filename
     } while (idx != binsize);
     fclose(binfile);
 
+    if (rv_simulator_load_memory(sim, buffer, 0, binsize)) {
+        free(buffer);
+        return -2;
+    }
+
+    free(buffer);
+
     return binsize;
 }
 
-uint8_t rv_simulator_monolithic_memory_read(void* mmem, uint32_t addr);
-void rv_simulator_monolithic_memory_write(void* mmem, uint32_t addr, uint8_t data);
+uint8_t rv_simulator_monolithic_memory_read(void* mmem, uint32_t addr) {
+    rv_simulator_monolithic_memory_t* mem = (rv_simulator_monolithic_memory_t*)mmem;
+    if (addr < mem->size) {
+        return mem->data[addr];
+    } else {
+        printf("Monolithic memory: attempted read out of memory bounds (write @ %x)\n", addr);
+        return 0;
+    }
+}
 
-void rv_simulator_monolithic_memory_init(rv_simulator_monolithic_memory_t* mmem, uint32_t size);
-void rv_simulator_monolithic_memory_deinit(rv_simulator_monolithic_memory_t* mmem);
+void rv_simulator_monolithic_memory_write(void* mmem, uint32_t addr, uint8_t data) {
+    rv_simulator_monolithic_memory_t* mem = (rv_simulator_monolithic_memory_t*)mmem;
+    if (addr < mem->size) {
+        mem->data[addr] = data;
+    } else {
+        printf("Monolithic memory: attempted write outside of memory bounds (write %x @ %x)\n", data, addr);
+    }
+}
+
+void rv_simulator_monolithic_memory_init(rv_simulator_monolithic_memory_t* mmem, uint32_t size) {
+    mmem->size = size;
+    mmem->data = (uint8_t*)calloc(size, 1);
+}
+
+void rv_simulator_monolithic_memory_deinit(rv_simulator_monolithic_memory_t* mmem) {
+    free(mmem->data);
+    mmem->size = 0;
+}

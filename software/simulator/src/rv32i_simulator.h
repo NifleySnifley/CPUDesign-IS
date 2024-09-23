@@ -74,7 +74,7 @@ typedef void (*rv_sim_syscall_fn_t) (void*);
 
 typedef enum rv_simulator_memory_type_t {
     MONOLITHIC,
-    TILED,
+    SEGMENTED,
 } rv_simulator_memory_type_t;
 
 typedef struct rv_simulator_memory_interface_t {
@@ -90,17 +90,17 @@ typedef struct rv_simulator_memory_interface_t {
     void* memory;
 }rv_simulator_memory_interface_t;
 
-// /// @brief Structure used by the tiled memory implementation representing a single, contiguous region of memory attached to the simulated processor's bus.
-// typedef struct rv_simulator_tiled_memory_region_t {
-//     /// @brief User-defined name for the memory region
+// /// @brief Structure used by the segmented memory implementation representing a single, contiguous region of memory attached to the simulated processor's bus.
+// typedef struct rv_simulator_segmented_memory_segment_t {
+//     /// @brief User-defined name for the memory segment
 //     const char* tag;
-//     /// @brief Start address of the memory region
+//     /// @brief Start address of the memory segment
 //     uint32_t start_address;
-//     /// @brief Size (bytes) of the memory region
+//     /// @brief Size (bytes) of the memory segment
 //     uint32_t size;
-//     /// @brief Pointer to the underlying storage used by the region
+//     /// @brief Pointer to the underlying storage used by the segment
 //     uint8_t* memory;
-// } rv_simulator_memory_region_t;
+// } rv_simulator_segmented_memory_segment_t;
 
 /// @brief Monolithic (single contiguous) memory implementation for basic simulations
 typedef struct rv_simulator_monolithic_memory_t {
@@ -176,6 +176,8 @@ void rv_simulator_deinit(rv_simulator_t* sim);
 /// @param sim simulator
 void rv_simulator_print_regs(rv_simulator_t* sim);
 
+uint32_t rv_simulator_total_memory_size(rv_simulator_t* sim);
+
 /// @brief Dumps the current state of `sim`'s registers to a file (CSV formatted)
 /// @param sim simulator
 /// @param file open, read-capable `FILE*` to write to
@@ -193,6 +195,9 @@ void rv_simulator_pprint_memory(rv_simulator_t* sim);
 /// @brief Pretty-prints current state of `sim`'s registers (with color!) including ABI names
 /// @param sim simulator
 void rv_simulator_pprint_registers(rv_simulator_t* sim);
+
+#define rv_simulator_read_byte(simptr, idx) sim->memory_interface.read_byte_fn(sim->memory_interface.memory, idx)
+#define rv_simulator_write_byte(simptr, idx, b) sim->memory_interface.write_byte_fn(sim->memory_interface.memory, idx, b)
 
 /// @brief Loads memory contents from a binary file into simulator's memory
 /// @param sim simulator to load into

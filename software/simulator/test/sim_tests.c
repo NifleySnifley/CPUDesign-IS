@@ -15,7 +15,8 @@ void sim_run(rv_simulator_t* sim) {
 rv_simulator_t make_simulator(const char* code_filename) {
     rv_simulator_t sim;
 
-    rv_simulator_init(&sim, 0x2000);
+    rv_simulator_init(&sim);
+    rv_simulator_init_monolithic_memory(&sim, 0x2000);
     rv_simulator_load_memory_from_file(&sim, code_filename);
 
     return sim;
@@ -30,7 +31,8 @@ bool test_rv_test(char* testname) {
     strncat(code_filename, ".bin", strrem);
 
     rv_simulator_t sim;
-    rv_simulator_init(&sim, 0x2000);
+    rv_simulator_init(&sim);
+    rv_simulator_init_monolithic_memory(&sim, 0x2000);
     rv_simulator_load_memory_from_file(&sim, code_filename);
     sim.x[1] = (uint32_t)-1;
     sim.x[2] = 0x1800;

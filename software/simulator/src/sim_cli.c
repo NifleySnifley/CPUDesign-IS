@@ -87,7 +87,8 @@ int main(int argc, char** argv) {
 
     signal(SIGINT, signal_handler);
 
-    rv_simulator_init(&sim, memory_size);
+    rv_simulator_init(&sim);
+    rv_simulator_init_monolithic_memory(&sim, memory_size);
     if (tracing)
         sim.instr_trace = instr_trace;
     sim.x[1] = (uint32_t)-1; // Set return address for the program to a known location!
@@ -96,32 +97,7 @@ int main(int argc, char** argv) {
 
 
     // Read initial memory contents from binary file (from assembler/compiler converted with objdump from elf)
-    FILE* binfile = fopen(memory_input_file, "r+");
-    if (binfile == NULL) {
-        fprintf(stderr, "Error opening file\n");
-        return 2;
-    }
-
-    fseek(binfile, 0, SEEK_END);
-    int binsize = ftell(binfile);
-    rewind(binfile);
-
-    if (binsize > sim.mem_size) {
-        fprintf(stderr, "Error, binary file is larger than simulator memory size!\n");
-        return 3;
-    }
-
-    int idx = 0;
-    do {
-        int n = fread(&sim.memory[idx], 1, binsize - idx, binfile);
-        if (n == -1) {
-            fprintf(stderr, "Error reading file!\n");
-            return 4;
-        }
-        idx += n;
-    } while (idx != binsize);
-    fclose(binfile);
-
+    int numloaded = rv_simulator_load_memory_from_file(&sim, memory_input_file);
 
     while (1) {
         if (sim.pc == (uint32_t)-1) {

@@ -42,7 +42,10 @@ const char* tracefile = nullptr;
 const char* memfile = nullptr;
 
 int simulator_read_word(rv_simulator_t* sim, uint32_t i) {
-    return sim->memory[i + 0] | (sim->memory[i + 1] << 8) | (sim->memory[i + 2] << 16) | (sim->memory[i + 3] << 24);
+    return rv_simulator_read_byte(sim, i + 0) | \
+        (rv_simulator_read_byte(sim, i + 1) << 8) | \
+        (rv_simulator_read_byte(sim, i + 2) << 16) | \
+        (rv_simulator_read_byte(sim, i + 3) << 24);
 }
 
 bool simulator_equals_dut(Vsoc_sim* dut, rv_simulator_t* sim) {
@@ -57,7 +60,8 @@ bool simulator_equals_dut(Vsoc_sim* dut, rv_simulator_t* sim) {
         }
     }
 
-    for (int wa = 0; wa < sim->mem_size / 4; ++wa) {
+    // TODO: Move to segmented memory model
+    for (int wa = 0; wa < rv_simulator_total_memory_size(sim) / 4; ++wa) {
         if (simulator_read_word(sim, wa * 4) != dut->rootp->soc_sim__DOT__mem__DOT__memory[wa]) {
             printf("Mismatch of memory word @ %x: sim=%u, dut=%u\n", wa * 4, simulator_read_word(sim, wa * 4), dut->rootp->soc_sim__DOT__mem__DOT__memory[wa]);
             return false;
@@ -171,7 +175,8 @@ int main(int argc, char** argv, char** env) {
     rv_simulator_t simulator;
     constexpr uint32_t memsize_words = (sizeof(dut->rootp->soc_sim__DOT__mem__DOT__memory.m_storage)) / 4;
 
-    rv_simulator_init(&simulator, memsize_words * 4);
+    rv_simulator_init(&simulator);
+    rv_simulator_init_monolithic_memory(&simulator, memsize_words * 4);
     // simulator.instr_trace = sim_tracefn;
     // TODO: Ceiling divide here!
     int binsize_words = rv_simulator_load_memory_from_file(&simulator, memfile) / 4;
@@ -319,6 +324,7 @@ int main(int argc, char** argv, char** env) {
     }
 
     if (tracefile != nullptr)m_trace->close();
+    rv_simulator_deinit(&simulator);
     delete dut;
     exit(fail ? EXIT_FAIL : EXIT_SUCCESS);
 }
