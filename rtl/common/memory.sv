@@ -1,6 +1,7 @@
 module memory #(
     parameter SIZE   = 256,
-    parameter INIT_F = ""
+    parameter INIT_B = "",
+    parameter INIT_H = ""
 ) (
     input wire clk,
     input wire [31:0] mem_addr,
@@ -24,7 +25,8 @@ module memory #(
     assign mem_done = (word_addr == xact_addr);  // HUHHH yes
 
     initial begin
-        if (INIT_F != "") $readmemb(INIT_F, memory);
+        if (INIT_B != "") $readmemb(INIT_B, memory);
+        if (INIT_H != "") $readmemh(INIT_H, memory);
     end
 
     wire [DEPTH_B-1:0] word_addr = mem_addr[1+DEPTH_B:2];

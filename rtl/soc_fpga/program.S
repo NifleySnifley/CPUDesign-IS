@@ -4,6 +4,7 @@
     .global  _start;
 _start:
     li x10, 0x80
+
     li x11, 1
     li x12, 0x80
 

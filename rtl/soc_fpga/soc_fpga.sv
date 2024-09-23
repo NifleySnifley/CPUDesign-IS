@@ -9,7 +9,7 @@
 `endif
 
 module soc_fpga #(
-    parameter INITF = "build/program.txt"
+    parameter MEMSIZE = 2048
 ) (
     input  clk12MHz,
     output led1,
@@ -34,7 +34,7 @@ module soc_fpga #(
     always_ff @(posedge clk12MHz) begin
         clkdivider <= clkdivider + 1;
     end
-    wire clk_slow = clkdivider[14];
+    wire clk_slow = clk12MHz;  //clkdivider[10];
 
     // LEDS
     wire [7:0] leds;
@@ -114,8 +114,8 @@ module soc_fpga #(
     wire mem_active;
 
     memory #(
-        .INIT_F(INITF),
-        .SIZE  (2048)
+        .INIT_H("build/phony.hex"),
+        .SIZE  (MEMSIZE)
     ) mem (
         .clk(core_clk),
         .mem_addr,
