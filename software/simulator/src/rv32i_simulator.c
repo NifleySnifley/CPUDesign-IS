@@ -58,10 +58,12 @@ uint32_t sra(uint32_t num, int shift_amount) {
 }
 
 int rv_simulator_step(rv_simulator_t* sim) {
-    uint32_t inst = (sim->memory[sim->pc + 0] << 0) | \
-        (sim->memory[sim->pc + 1] << 8) | \
-        (sim->memory[sim->pc + 2] << 16) | \
-        (sim->memory[sim->pc + 3] << 24);
+    // uint32_t inst = (sim->memory[sim->pc + 0] << 0) | \
+    //     (sim->memory[sim->pc + 1] << 8) | \
+    //     (sim->memory[sim->pc + 2] << 16) | \
+    //     (sim->memory[sim->pc + 3] << 24);
+    // FIXME: Fetch instruction word using memory interface
+    uint32_t inst;
 
     uint32_t imm_i = BITS(inst, 20, 31);
     uint32_t imm_s = (BITS(inst, 25, 31) << 5) | BITS(inst, 7, 11);
@@ -95,10 +97,10 @@ int rv_simulator_step(rv_simulator_t* sim) {
     // To allow for future tracing of memory/register interactions
 #define R(r) (sim->x[r])
 // #define M(a) (sim->memory[a])
-#define M(a) (sim->read_fn(sim, a))
+#define M(a) (sim->memory_interface.read_byte_fn(sim, a))
 #define RSET(r, v) if(r!=0) {sim->x[r]=(v);}
 // #define MSET(a, v) TRACE_MEM_WRITE(a, v); if (a < sim->mem_size) { (sim->memory[a] = v); } else {fprintf(stderr, "Error: write address %x exceeds memory size of %x\n", a, sim->mem_size);}; 
-#define MSET(a, v) (sim->write_fn(sim, a, v))
+#define MSET(a, v) (sim->memory_interface.write_byte_fn(sim, a, v))
 
     // TODO: Fix PC with returns
 
@@ -415,15 +417,15 @@ bool rv_simulator_load_memory(rv_simulator_t* sim, uint8_t* data, uint32_t offse
     return false;
 }
 
-void rv_simulator_init(rv_simulator_t* sim, uint32_t mem_size) {
-    sim->memory = (uint8_t*)calloc((size_t)mem_size, sizeof(uint8_t));
-    sim->mem_size = mem_size;
-    sim->pc = 0;
-    memset(sim->x, 0, sizeof(uint32_t) * 32);
+void rv_simulator_init_monolithic_memory(rv_simulator_t* sim, uint32_t mem_size) {
+    rv_simulator_monolithic_memory_t* mem = (rv_simulator_monolithic_memory_t*)calloc(1, sizeof(rv_simulator_monolithic_memory_t));
+    rv_simulator_monolithic_memory_init(mem, mem_size);
+    sim->memory_interface.memory = mem;
+    sim->memory_interface.read_byte_fn = rv_simulator_monolithic_memory_read;
+    sim->memory_interface.write_byte_fn = rv_simulator_monolithic_memory_write;
+}
 
-    sim->read_fn = rv_simulator_default_read;
-    sim->write_fn = rv_simulator_default_write;
-
+void rv_simulator_init(rv_simulator_t* sim) {
     sim->err_trace = NULL;
     sim->cond_trace = NULL;
     sim->instr_trace = NULL;
@@ -432,8 +434,11 @@ void rv_simulator_init(rv_simulator_t* sim, uint32_t mem_size) {
     sim->scall_fn = NULL;
 }
 void rv_simulator_deinit(rv_simulator_t* sim) {
-    free(sim->memory);
-    sim->mem_size = 0;
+    if (sim->memory_interface.type == MONOLITHIC) {
+        rv_simulator_monolithic_memory_deinit((rv_simulator_monolithic_memory_t*)sim->memory_interface.memory);
+    } else {
+        // TODO: Implement tiled memory model
+    }
 }
 
 void rv_simulator_print_regs(rv_simulator_t* sim) {
@@ -453,45 +458,39 @@ int rv_simulator_dump_regs(rv_simulator_t* sim, FILE* regfile) {
     return 0;
 }
 
+// FIXME: Fix for different memory implementations
 int rv_simulator_dump_memory(rv_simulator_t* sim, FILE* memfile) {
-    fwrite(sim->memory, 1, sim->mem_size, memfile);
-    fflush(memfile);
+    if (sim->memory_interface.type == MONOLITHIC) {
+        rv_simulator_monolithic_memory_t* mem = (rv_simulator_monolithic_memory_t*)sim->memory_interface.memory;
+        fwrite(mem->data, 1, mem->size, memfile);
+        fflush(memfile);
+    } else {
+        printf("Error! Memory dump is not supported for memory models other than monolithic");
+    }
+
 
     return 0;
 }
 
+// FIXME: Fix for different memory implementations
 void rv_simulator_pprint_memory(rv_simulator_t* sim) {
     // Use 'hd' to do a nice hexdump! (pipe memory to hd)
 
-    FILE* hd_proc = popen("hd", "w");
-    fwrite(sim->memory, 1, sim->mem_size, hd_proc);
-    fflush(hd_proc);
-    int status = pclose(hd_proc);
+    if (sim->memory_interface.type == MONOLITHIC) {
+        rv_simulator_monolithic_memory_t* mem = (rv_simulator_monolithic_memory_t*)sim->memory_interface.memory;
+        FILE* hd_proc = popen("hd", "w");
+        fwrite(mem->data, 1, mem->size, hd_proc);
+        fflush(hd_proc);
+        int status = pclose(hd_proc);
+    } else {
+        printf("Error! Memory dump is not supported for memory models other than monolithic");
+    }
 }
 
 void rv_simulator_pprint_registers(rv_simulator_t* sim) {
     printf("Registers:\n");
     for (int r = 0; r < 32; ++r) {
         printf("\t\x1b[31mx%d\x1b[0m/%s = \x1b[32m%d\x1b[0m (0x%x)\n", r, REG_ABI_NAMES[r], (int32_t)sim->x[r], sim->x[r]);
-    }
-}
-
-uint8_t rv_simulator_default_read(void* _sim, uint32_t addr) {
-    rv_simulator_t* sim = _sim;
-    if (addr < sim->mem_size) {
-        return sim->memory[addr];
-    } else {
-        fprintf(stderr, "Error, attempted read out of memory bounds (read @ %x)!\n", addr);
-        return 0;
-    }
-}
-
-void rv_simulator_default_write(void* _sim, uint32_t addr, uint8_t data) {
-    rv_simulator_t* sim = _sim;
-    if (addr < sim->mem_size) {
-        sim->memory[addr] = data;
-    } else {
-        fprintf(stderr, "Error, attempted write outside of memory bounds (write %x @ %x)!\n", data, addr);
     }
 }
 
@@ -523,3 +522,9 @@ int rv_simulator_load_memory_from_file(rv_simulator_t* sim, const char* filename
 
     return binsize;
 }
+
+uint8_t rv_simulator_monolithic_memory_read(void* mmem, uint32_t addr);
+void rv_simulator_monolithic_memory_write(void* mmem, uint32_t addr, uint8_t data);
+
+void rv_simulator_monolithic_memory_init(rv_simulator_monolithic_memory_t* mmem, uint32_t size);
+void rv_simulator_monolithic_memory_deinit(rv_simulator_monolithic_memory_t* mmem);

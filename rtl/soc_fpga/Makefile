@@ -4,7 +4,7 @@ BUILDDIR=./build
 DEFAULT_PROGRAM=program.S
 MEMSIZE=2048
  # --pad $$(($(MEMSIZE) * 4))
-ASSEMBLER=../../software/simulator/asm2bin.py --hex
+ASSEMBLER=../../software/simulator/asm2bin.py --hex --assemble
 BINARY=$(BUILDDIR)/program.hex
 
 DEVICE=hx8k # Upduino: up5k, iceFUN: hx8k

@@ -10,7 +10,7 @@ run:  obj_dir/Vsoc_sim obj_dir/memory.bin
 	obj_dir/Vsoc_sim -v -d -l256 obj_dir/memory.bin
 
 obj_dir/memory.bin: $(PROGRAM_FILE)
-	$(ASSEMBLER) $(PROGRAM_FILE) --bin -o obj_dir/memory.bin
+	$(ASSEMBLER) $(PROGRAM_FILE) --raw --assemble -o obj_dir/memory.bin
 
 obj_dir/Vsoc_sim: generate
 	$(MAKE) -C obj_dir -f Vsoc_sim.mk Vsoc_sim

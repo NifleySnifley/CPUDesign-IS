@@ -52,6 +52,7 @@ typedef void (*rv_sim_instr_trace_fn_t) (void*, const char*);
 typedef void (*rv_sim_cond_trace_fn_t) (void*, bool);
 /// @brief Error trace function for `rv_simulator_t->err_trace`
 typedef void (*rv_sim_err_trace_fn_t) (void*);
+
 /// @brief Function used by \ref rv_simulator_t for reading bytes from memory
 typedef uint8_t(*rv_sim_read_fn_t) (void*, uint32_t);
 /// @brief Function used by \ref rv_simulator_t for writing bytes from memory
@@ -71,6 +72,49 @@ typedef void (*rv_sim_syscall_fn_t) (void*);
 #define TRACE_ARGUMENTS(src1, src2, dest, imm)
 #endif
 
+typedef enum rv_simulator_memory_type_t {
+    MONOLITHIC,
+    TILED,
+} rv_simulator_memory_type_t;
+
+typedef struct rv_simulator_memory_interface_t {
+    /// @brief Hook function for memory reading. set to \ref rv_simulator_default_read by default
+    rv_sim_read_fn_t read_byte_fn;
+    /// @brief Hook function for memory writing. set to \ref rv_simulator_default_write by default
+    rv_sim_write_fn_t write_byte_fn;
+
+    /// @brief Type of current memory being used
+    rv_simulator_memory_type_t type;
+
+    /// @brief User-defined pointer to underlying implementation of the memory
+    void* memory;
+}rv_simulator_memory_interface_t;
+
+// /// @brief Structure used by the tiled memory implementation representing a single, contiguous region of memory attached to the simulated processor's bus.
+// typedef struct rv_simulator_tiled_memory_region_t {
+//     /// @brief User-defined name for the memory region
+//     const char* tag;
+//     /// @brief Start address of the memory region
+//     uint32_t start_address;
+//     /// @brief Size (bytes) of the memory region
+//     uint32_t size;
+//     /// @brief Pointer to the underlying storage used by the region
+//     uint8_t* memory;
+// } rv_simulator_memory_region_t;
+
+/// @brief Monolithic (single contiguous) memory implementation for basic simulations
+typedef struct rv_simulator_monolithic_memory_t {
+    uint8_t* data;
+    uint32_t size;
+} rv_simulator_monolithic_memory_t;
+
+uint8_t rv_simulator_monolithic_memory_read(void* mmem, uint32_t addr);
+void rv_simulator_monolithic_memory_write(void* mmem, uint32_t addr, uint8_t data);
+
+void rv_simulator_monolithic_memory_init(rv_simulator_monolithic_memory_t* mmem, uint32_t size);
+void rv_simulator_monolithic_memory_deinit(rv_simulator_monolithic_memory_t* mmem);
+
+/// @brief Structure representing the state and periphery of a simulated RISC-V processor.
 typedef struct rv_simulator_t {
     /// @brief Register file (x0-x31). x0 will always be 0.
     union {
@@ -83,11 +127,6 @@ typedef struct rv_simulator_t {
     /// @brief Program-counter for the simulator
     uint32_t pc;
 
-    /// @brief Size of the simulator's memory
-    uint32_t mem_size;
-    /// @brief Allocated memory for the simulator
-    uint8_t* memory;
-
     /// @brief Trace function for instruction execution. `NULL` to disable instruction tracing
     rv_sim_instr_trace_fn_t instr_trace;
     /// @brief Trace function for branch results. `NULL` to disable branch tracing
@@ -95,10 +134,8 @@ typedef struct rv_simulator_t {
     /// @brief Trace function for errors. `NULL` to disable error tracing
     rv_sim_err_trace_fn_t err_trace;
 
-    /// @brief Hook function for memory reading. set to \ref rv_simulator_default_read by default
-    rv_sim_read_fn_t read_fn;
-    /// @brief Hook function for memory writing. set to \ref rv_simulator_default_write by default
-    rv_sim_write_fn_t write_fn;
+    /// @brief Memory interface structure containing implementation of the current memory model
+    rv_simulator_memory_interface_t memory_interface;
 
     /// @brief Function executed on breakpoints
     rv_sim_breakpoint_fn_t bkpt_fn;
@@ -119,10 +156,17 @@ int rv_simulator_step(rv_simulator_t* sim);
 /// @return `false` on success `true` if data cannot fit inside `sim`'s" allocated memory
 bool rv_simulator_load_memory(rv_simulator_t* sim, uint8_t* data, uint32_t offset, uint32_t count);
 
+
+void rv_simulator_init_monolithic_memory(rv_simulator_t* sim, uint32_t mem_size);
+
+// /// @brief Initializes simulator
+// /// @param sim simulator
+// /// @param mem_size size of memory (bytes) to allocate for the simulator, uses the monolithic memory implementation by default
+// void rv_simulator_init_with_memory(rv_simulator_t* sim, uint32_t mem_size);
+
 /// @brief Initializes simulator
 /// @param sim simulator
-/// @param mem_size size of memory (bytes) to allocate for the simulator
-void rv_simulator_init(rv_simulator_t* sim, uint32_t mem_size);
+void rv_simulator_init(rv_simulator_t* sim);
 
 /// @brief Frees all resources allocated by `sim`
 /// @param sim simulator
@@ -149,9 +193,6 @@ void rv_simulator_pprint_memory(rv_simulator_t* sim);
 /// @brief Pretty-prints current state of `sim`'s registers (with color!) including ABI names
 /// @param sim simulator
 void rv_simulator_pprint_registers(rv_simulator_t* sim);
-
-uint8_t rv_simulator_default_read(void* sim, uint32_t addr);
-void rv_simulator_default_write(void* sim, uint32_t addr, uint8_t data);
 
 /// @brief Loads memory contents from a binary file into simulator's memory
 /// @param sim simulator to load into
