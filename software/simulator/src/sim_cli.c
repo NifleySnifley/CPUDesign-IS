@@ -45,13 +45,8 @@ void instr_trace(void* _sim, const char* inst_str) {
 }
 
 int main(int argc, char** argv) {
-    // TODO: Add a proper CLI for specifying memory size, etc.
-    // if (argc < 2) {
-    //     fprintf(stderr, "Error, binary memory file must be specified");
-    //     return 1;
-    // }
+    RV_SIM_VERBOSE = true;
 
-    // TODO: Add more opts for verbosity, tracing, logging, etc.
     int opt;
     while ((opt = getopt(argc, argv, "p:m:o:r:v")) != -1) {
         switch (opt) {

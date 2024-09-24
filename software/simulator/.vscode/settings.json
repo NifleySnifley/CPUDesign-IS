@@ -1,0 +1,16 @@
+{
+	"files.associations": {
+		"CMakeLists.txt": "cmake",
+		"*.fs": "fsharp",
+		"*.html": "html",
+		"*.ipynb": "python",
+		"array": "c",
+		"string": "c",
+		"string_view": "c",
+		"bitset": "c",
+		"initializer_list": "c",
+		"regex": "c",
+		"utility": "c",
+		"signal.h": "c"
+	}
+}

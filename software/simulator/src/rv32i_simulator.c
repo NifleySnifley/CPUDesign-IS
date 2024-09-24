@@ -40,6 +40,8 @@ const char* REG_ABI_NAMES[32] = {
     "t6"
 };
 
+bool RV_SIM_VERBOSE = false;
+
 /// @brief Sign-extends the binary representation of a number
 /// @param num number to extend
 /// @param n_bits bit length of number to extend
@@ -84,7 +86,7 @@ int rv_simulator_step(rv_simulator_t* sim) {
     uint32_t rs2 = BITS(inst, 20, 24);
 
     if (BITS(opcode, 0, 1) != 0b11) {
-        printf("Invalid instruction @ pc=%d (%b/%x)\n", sim->pc, inst, inst);
+        if (RV_SIM_VERBOSE) printf("Invalid instruction @ pc=%d (%b/%x)\n", sim->pc, inst, inst);
         TRACE_ERROR(sim);
         return 1;
     }
@@ -406,7 +408,6 @@ int rv_simulator_step(rv_simulator_t* sim) {
     return 0;
 }
 
-// TODO: Seek which segment is trying to be read into when using segmented model
 bool rv_simulator_load_memory(rv_simulator_t* sim, uint8_t* data, uint32_t offset, uint32_t count) {
     if (sim->memory_interface.type == MONOLITHIC) {
         rv_simulator_monolithic_memory_t* mem = (rv_simulator_monolithic_memory_t*)sim->memory_interface.memory;
@@ -417,8 +418,15 @@ bool rv_simulator_load_memory(rv_simulator_t* sim, uint8_t* data, uint32_t offse
             memcpy(&mem->data[offset], data, count);
         }
         return false;
+    } else if (sim->memory_interface.type == SEGMENTED) {
+        // FIXME: This is stupid, and has no way of returning error codes, would instead flood the console with error messages!
+        // Could certainly implement a more optimized version with memcpy and segment searching
+        for (int i = 0; i < count; ++i) {
+            rv_simulator_write_byte(sim, offset + i, data[i]);
+        }
+        return false;
     } else {
-        printf("Error! Loading memory not implemented with segmented memory model");
+        return true;
     }
 }
 
@@ -429,6 +437,17 @@ void rv_simulator_init_monolithic_memory(rv_simulator_t* sim, uint32_t mem_size)
     sim->memory_interface.type = MONOLITHIC;
     sim->memory_interface.read_byte_fn = rv_simulator_monolithic_memory_read;
     sim->memory_interface.write_byte_fn = rv_simulator_monolithic_memory_write;
+}
+
+rv_simulator_segmented_memory_t* rv_simulator_init_segmented_memory(rv_simulator_t* sim) {
+    rv_simulator_segmented_memory_t* mem = (rv_simulator_segmented_memory_t*)calloc(1, sizeof(rv_simulator_segmented_memory_t));
+    rv_simulator_segmented_memory_init(mem);
+    sim->memory_interface.memory = mem;
+    sim->memory_interface.type = SEGMENTED;
+    sim->memory_interface.read_byte_fn = rv_simulator_segmented_memory_read;
+    sim->memory_interface.write_byte_fn = rv_simulator_segmented_memory_write;
+
+    return mem;
 }
 
 void rv_simulator_init(rv_simulator_t* sim) {
@@ -471,8 +490,15 @@ uint32_t rv_simulator_total_memory_size(rv_simulator_t* sim) {
     if (sim->memory_interface.type == MONOLITHIC) {
         rv_simulator_monolithic_memory_t* mem = (rv_simulator_monolithic_memory_t*)sim->memory_interface.memory;
         return mem->size;
+    } else if (sim->memory_interface.type == SEGMENTED) {
+        rv_simulator_segmented_memory_t* segmem = (rv_simulator_segmented_memory_t*)sim->memory_interface.memory;
+        uint32_t total = 0;
+        printf("N = %d\n", segmem->n_segments);
+        for (int i = 0; i < segmem->n_segments; ++i)
+            total += segmem->segments[i].size;
+        return total;
     } else {
-        return 0; // TODO: Implement!
+        return -1;
     }
 }
 
@@ -483,9 +509,9 @@ int rv_simulator_dump_memory(rv_simulator_t* sim, FILE* memfile) {
         fwrite(mem->data, 1, mem->size, memfile);
         fflush(memfile);
     } else {
-        printf("Error! Memory dump is not supported for memory models other than monolithic");
+        printf("Error, memory dump not yet supported for the segmented memory model.\n");
+        return 1;
     }
-
 
     return 0;
 }
@@ -500,8 +526,16 @@ void rv_simulator_pprint_memory(rv_simulator_t* sim) {
         fwrite(mem->data, 1, mem->size, hd_proc);
         fflush(hd_proc);
         int status = pclose(hd_proc);
-    } else {
-        printf("Error! Memory dump is not supported for memory models other than monolithic");
+    } else if (sim->memory_interface.type == SEGMENTED) {
+        rv_simulator_segmented_memory_t* segmem = (rv_simulator_segmented_memory_t*)sim->memory_interface.memory;
+        for (int i = 0; i < segmem->n_segments; ++i) {
+            rv_simulator_segmented_memory_segment_t* segment = &segmem->segments[i];
+            printf("Memory segment '%s' (%x-%x):\n", segment->tag, segment->start_address, segment->start_address + segment->size);
+            FILE* hd_proc = popen("hd", "w");
+            fwrite(segment->data, 1, segment->size, hd_proc);
+            fflush(hd_proc);
+            pclose(hd_proc);
+        }
     }
 }
 
@@ -550,7 +584,7 @@ uint8_t rv_simulator_monolithic_memory_read(void* mmem, uint32_t addr) {
     if (addr < mem->size) {
         return mem->data[addr];
     } else {
-        printf("Monolithic memory: attempted read out of memory bounds (write @ %x)\n", addr);
+        if (RV_SIM_VERBOSE) printf("Monolithic memory: attempted read out of memory bounds (read @ %x)\n", addr);
         return 0;
     }
 }
@@ -560,7 +594,7 @@ void rv_simulator_monolithic_memory_write(void* mmem, uint32_t addr, uint8_t dat
     if (addr < mem->size) {
         mem->data[addr] = data;
     } else {
-        printf("Monolithic memory: attempted write outside of memory bounds (write %x @ %x)\n", data, addr);
+        if (RV_SIM_VERBOSE) printf("Monolithic memory: attempted write outside of memory bounds (write %x @ %x)\n", data, addr);
     }
 }
 
@@ -572,4 +606,68 @@ void rv_simulator_monolithic_memory_init(rv_simulator_monolithic_memory_t* mmem,
 void rv_simulator_monolithic_memory_deinit(rv_simulator_monolithic_memory_t* mmem) {
     free(mmem->data);
     mmem->size = 0;
+}
+
+/// @brief Finds the index of the memory segment containing a certain address
+/// @param segmem Segmented memory instance pointer
+/// @param address Address to search for
+/// @return -1 if no segments were found containing `address`, otherwise, returns the first segment containing `address`
+int _rv_simulator_segmented_memory_find_segment(rv_simulator_segmented_memory_t* segmem, uint32_t address) {
+    // TODO: This could be optimized with a binary search if all segments are stored in increasing order
+    for (int i = 0; i < segmem->n_segments; ++i) {
+        if (address >= segmem->segments[i].start_address && address < (segmem->segments[i].start_address + segmem->segments[i].size)) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+uint8_t rv_simulator_segmented_memory_read(void* sptr, uint32_t addr) {
+    rv_simulator_segmented_memory_t* segmem = (rv_simulator_segmented_memory_t*)sptr;
+    int segnum = _rv_simulator_segmented_memory_find_segment(segmem, addr);
+    if (segnum < 0) {
+        if (RV_SIM_VERBOSE) printf("Segmented memory: attempted read out of memory bounds (read @ %x)\n", addr);
+        return 0;
+    } else {
+        return segmem->segments[segnum].data[addr - segmem->segments[segnum].start_address];
+    }
+}
+void rv_simulator_segmented_memory_write(void* sptr, uint32_t addr, uint8_t data) {
+    rv_simulator_segmented_memory_t* segmem = (rv_simulator_segmented_memory_t*)sptr;
+    int segnum = _rv_simulator_segmented_memory_find_segment(segmem, addr);
+    if (segnum < 0) {
+        if (RV_SIM_VERBOSE) printf("Segmented memory: attempted write outside of memory bounds (write %x @ %x)\n", data, addr);
+    } else {
+        rv_simulator_segmented_memory_segment_t* segment = &segmem->segments[segnum];
+        if (segment->readonly) {
+            if (RV_SIM_VERBOSE) printf("Segmented memory: attempted write to read only memory segment (write %x @ %x, segment tag '%s')\n", data, addr, segment->tag);
+        } else {
+            segment->data[addr - segment->start_address] = data;
+        }
+    }
+}
+void rv_simulator_segmented_memory_init(rv_simulator_segmented_memory_t* segmem) {
+    segmem->n_segments = 0;
+    // Allocate space for one segment initially
+    segmem->segments = (rv_simulator_segmented_memory_segment_t*)calloc(0, sizeof(rv_simulator_segmented_memory_segment_t));
+}
+void rv_simulator_segmented_memory_add_segment(rv_simulator_segmented_memory_t* segmem, uint32_t start_address, uint32_t size, const char* name, bool readonly) {
+    rv_simulator_segmented_memory_segment_t segment = {
+        .data = calloc(size, 1),
+        .readonly = readonly,
+        .size = size,
+        .start_address = start_address,
+        .tag = name
+    };
+
+    // Allocate space for another segment
+    segmem->segments = realloc(segmem->segments, (segmem->n_segments + 1) * sizeof(rv_simulator_segmented_memory_segment_t));
+    segmem->segments[segmem->n_segments++] = segment;
+}
+void rv_simulator_segmented_memory_deinit(rv_simulator_segmented_memory_t* segmem) {
+    for (int i = 0; i < segmem->n_segments; ++i) {
+        free(segmem->segments[i].data);
+    }
+    free(segmem->segments);
+    segmem->n_segments = 0;
 }

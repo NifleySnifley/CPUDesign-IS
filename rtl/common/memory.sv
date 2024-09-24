@@ -22,7 +22,7 @@ module memory #(
 
     reg [DEPTH_B-1:0] xact_addr;
 
-    assign mem_done = (word_addr == xact_addr);  // HUHHH yes
+    assign mem_done = active & (word_addr == xact_addr);  // HUHHH yes
 
     initial begin
         if (INIT_B != "") $readmemb(INIT_B, memory);

@@ -1,6 +1,8 @@
 #include <stdint.h>
 
+#ifndef F_CPU
 #define F_CPU 12000000
+#endif
 
 inline static void delay_ms(uint32_t ms) {
     // 2 instructions per loop cycle, roughly 4 cycles per instruction

@@ -1,0 +1,11 @@
+{
+	"files.associations": {
+		"CMakeLists.txt": "cmake",
+		"*.fs": "fsharp",
+		"*.html": "html",
+		"*.ipynb": "python",
+		"cpu_time.h": "c",
+		"led_matrix.h": "c",
+		"stdint.h": "c"
+	}
+}

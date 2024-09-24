@@ -11,8 +11,8 @@ DEVICE=hx8k # Upduino: up5k, iceFUN: hx8k
 PACKAGE=cb132 # Upduino: sg48, iceFUN: cb132
 PROGTOOL=iceFUNprog #Upduino: "iceprog -d i:0x0403:0x6014", iceFUN: iceFUNprog
 
-SRCFILES=../cpu/cpu.sv ../alu/alu.sv ./soc_fpga.sv ../common/memory.sv ../common/bus_hub_1.sv ../common/bus_hub_2.sv ../fpga/parallel_port.sv
-PROJNAME=soc_fpga
+PROJNAME=soc_iceFUN
+SRCFILES=../cpu/cpu.sv ../alu/alu.sv ./$(PROJNAME).sv ../common/memory.sv ../common/bus_hub_*.sv ../fpga/parallel_port.sv
 TOPNAME=$(PROJNAME)
 PNR_ARGS=--$(DEVICE) --package $(PACKAGE) --json $(BUILDDIR)/$(PROJNAME).json --pcf ./$(PROJNAME).pcf --asc $(BUILDDIR)/$(PROJNAME)_base.asc
 

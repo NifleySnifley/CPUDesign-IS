@@ -43,6 +43,9 @@
 
 #define BITS_32 0b11111111111111111111111111111111
 
+/// @brief Allow error logging, etc. from memory interface
+extern bool RV_SIM_VERBOSE;
+
 /// @brief Official RISC-V ABI names for each of the 32 registers.
 extern const char* REG_ABI_NAMES[32];
 
@@ -90,17 +93,31 @@ typedef struct rv_simulator_memory_interface_t {
     void* memory;
 }rv_simulator_memory_interface_t;
 
-// /// @brief Structure used by the segmented memory implementation representing a single, contiguous region of memory attached to the simulated processor's bus.
-// typedef struct rv_simulator_segmented_memory_segment_t {
-//     /// @brief User-defined name for the memory segment
-//     const char* tag;
-//     /// @brief Start address of the memory segment
-//     uint32_t start_address;
-//     /// @brief Size (bytes) of the memory segment
-//     uint32_t size;
-//     /// @brief Pointer to the underlying storage used by the segment
-//     uint8_t* memory;
-// } rv_simulator_segmented_memory_segment_t;
+/// @brief Structure used by the segmented memory implementation representing a single, contiguous region of memory attached to the simulated processor's bus.
+typedef struct rv_simulator_segmented_memory_segment_t {
+    /// @brief User-defined name for the memory segment
+    const char* tag;
+    /// @brief Start address of the memory segment
+    uint32_t start_address;
+    /// @brief Size (bytes) of the memory segment
+    uint32_t size;
+    /// @brief Pointer to the underlying storage/memory used by the segment
+    uint8_t* data;
+    /// @brief Set to true if this segment contains data that is read-only
+    bool readonly;
+} rv_simulator_segmented_memory_segment_t;
+
+/// @brief Monolithic (single contiguous) memory implementation for basic simulations
+typedef struct rv_simulator_segmented_memory_t {
+    rv_simulator_segmented_memory_segment_t* segments;
+    uint32_t n_segments;
+} rv_simulator_segmented_memory_t;
+
+uint8_t rv_simulator_segmented_memory_read(void* segmem, uint32_t addr);
+void rv_simulator_segmented_memory_write(void* segmem, uint32_t addr, uint8_t data);
+void rv_simulator_segmented_memory_add_segment(rv_simulator_segmented_memory_t* segmem, uint32_t start_address, uint32_t size, const char* name, bool readonly);
+void rv_simulator_segmented_memory_init(rv_simulator_segmented_memory_t* segmem);
+void rv_simulator_segmented_memory_deinit(rv_simulator_segmented_memory_t* segmem);
 
 /// @brief Monolithic (single contiguous) memory implementation for basic simulations
 typedef struct rv_simulator_monolithic_memory_t {
@@ -110,7 +127,6 @@ typedef struct rv_simulator_monolithic_memory_t {
 
 uint8_t rv_simulator_monolithic_memory_read(void* mmem, uint32_t addr);
 void rv_simulator_monolithic_memory_write(void* mmem, uint32_t addr, uint8_t data);
-
 void rv_simulator_monolithic_memory_init(rv_simulator_monolithic_memory_t* mmem, uint32_t size);
 void rv_simulator_monolithic_memory_deinit(rv_simulator_monolithic_memory_t* mmem);
 
@@ -156,8 +172,9 @@ int rv_simulator_step(rv_simulator_t* sim);
 /// @return `false` on success `true` if data cannot fit inside `sim`'s" allocated memory
 bool rv_simulator_load_memory(rv_simulator_t* sim, uint8_t* data, uint32_t offset, uint32_t count);
 
-
 void rv_simulator_init_monolithic_memory(rv_simulator_t* sim, uint32_t mem_size);
+// TODO: Segments must be manually added!
+rv_simulator_segmented_memory_t* rv_simulator_init_segmented_memory(rv_simulator_t* sim);
 
 // /// @brief Initializes simulator
 // /// @param sim simulator

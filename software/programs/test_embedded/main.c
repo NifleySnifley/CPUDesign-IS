@@ -16,10 +16,3 @@ int main() {
 
 	return 0;
 }
-
-void __attribute__((section(".text.start"))) _start() {
-	// TODO: This is REALLY sketchy!!! Loading stack pointer is iffy at best...
-	// FIXME: Add a bus device for SPRAM on the ice40, and throw the stack pointer somewhere in there!
-	__asm__("li sp,0x1000");
-	main();
-}

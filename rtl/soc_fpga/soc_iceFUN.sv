@@ -3,12 +3,14 @@
 `ifdef IVERILOG_LINT
 `include "../cpu/cpu.sv"
 `include "../common/memory.sv"
+`include "../fpga/memory_spram.sv"
 `include "../common/bus_hub_1.sv"
 `include "../common/bus_hub_2.sv"
+`include "../common/bus_hub_3.sv"
 `include "../fpga/parallel_port.sv"
 `endif
 
-module soc_fpga #(
+module soc_iceFUN #(
     parameter MEMSIZE = 2048
 ) (
     input  clk12MHz,
@@ -127,7 +129,6 @@ module soc_fpga #(
         .mem_done,
         .active(mem_active)
     );
-
 
     wire [31:0] pp_addr;
     wire [31:0] pp_wdata;
