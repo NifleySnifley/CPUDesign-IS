@@ -546,37 +546,86 @@ void rv_simulator_pprint_registers(rv_simulator_t* sim) {
     }
 }
 
-int rv_simulator_load_memory_from_file(rv_simulator_t* sim, const char* filename) {
+int rv_simulator_load_memory_from_file(rv_simulator_t* sim, const char* filename, rv_mem_filetype_t type, uint32_t offset) {
     FILE* binfile = fopen(filename, "r");
     if (binfile == NULL) {
         return -1;
     }
 
     fseek(binfile, 0, SEEK_END);
-    int binsize = ftell(binfile);
+    int filesize = ftell(binfile);
     rewind(binfile);
 
-    uint8_t* buffer = (uint8_t*)malloc(binsize);
-
-    int idx = 0;
-    do {
-        int n = fread(&buffer[idx], 1, binsize - idx, binfile);
-        if (n == -1) {
-            fprintf(stderr, "Error reading file!\n");
-            return -4;
+    if (type == FILETYPE_AUTO) {
+        int namelen = strlen(filename);
+        char* suffix = &filename[namelen - 3];
+        // BIN files are RAW! remember!
+        if (strcmp(suffix, "txt") == 0) {
+            printf("Detected input file format to be binary-text\n");
+            type = FILETYPE_BINTXT;
+        } else if (strcmp(suffix, "hex") == 0) {
+            printf("Detected input file format to be hex\n");
+            type = FILETYPE_HEXTXT;
+        } else {
+            printf("Could not detect input file format, treating as binary\n");
+            type = FILETYPE_RAW;
         }
-        idx += n;
-    } while (idx != binsize);
-    fclose(binfile);
-
-    if (rv_simulator_load_memory(sim, buffer, 0, binsize)) {
-        free(buffer);
-        return -2;
     }
 
-    free(buffer);
+    if (type == FILETYPE_RAW) {
+        int binsize = filesize;
+        uint8_t* buffer = (uint8_t*)malloc(binsize);
 
-    return binsize;
+        int idx = 0;
+        do {
+            int n = fread(&buffer[idx], 1, binsize - idx, binfile);
+            if (n == -1) {
+                fprintf(stderr, "Error reading file!\n");
+                return -4;
+            }
+            idx += n;
+        } while (idx != binsize);
+        fclose(binfile);
+
+        if (rv_simulator_load_memory(sim, buffer, offset, binsize)) {
+            free(buffer);
+            return -2;
+        }
+
+        free(buffer);
+        return binsize;
+
+    } else if ((type = FILETYPE_HEXTXT) || (type == FILETYPE_BINTXT)) {
+        int max_size = filesize / 2; // 2 Characters per hex byte
+        uint8_t* contents = (uint8_t*)malloc(max_size);
+        int byte_size = 0;
+
+        char* line = NULL;
+        size_t len;
+
+        ssize_t n = 0;
+        while ((n = getline(&line, &len, binfile)) != -1) {
+            line[n - 1] = '\0';// Remove newline;
+            uint32_t number = (uint32_t)strtol(line, NULL, type == FILETYPE_HEXTXT ? 16 : 2);
+            // printf("@%x = %x\n", byte_size, number);
+            // Little endian
+            contents[byte_size++] = (number >> 0) & 0xFF;
+            contents[byte_size++] = (number >> 8) & 0xFF;
+            contents[byte_size++] = (number >> 16) & 0xFF;
+            contents[byte_size++] = (number >> 24) & 0xFF;
+        }
+
+        fclose(binfile);
+
+        if (rv_simulator_load_memory(sim, contents, offset, byte_size)) {
+            free(contents);
+            return -2;
+        }
+
+        free(contents);
+        return byte_size;
+    }
+
 }
 
 uint8_t rv_simulator_monolithic_memory_read(void* mmem, uint32_t addr) {

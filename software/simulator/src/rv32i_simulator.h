@@ -216,10 +216,17 @@ void rv_simulator_pprint_registers(rv_simulator_t* sim);
 #define rv_simulator_read_byte(simptr, idx) sim->memory_interface.read_byte_fn(sim->memory_interface.memory, idx)
 #define rv_simulator_write_byte(simptr, idx, b) sim->memory_interface.write_byte_fn(sim->memory_interface.memory, idx, b)
 
+typedef enum rv_mem_filetype_t {
+    FILETYPE_AUTO,
+    FILETYPE_RAW,
+    FILETYPE_BINTXT,
+    FILETYPE_HEXTXT,
+} rv_mem_filetype_t;
+
 /// @brief Loads memory contents from a binary file into simulator's memory
 /// @param sim simulator to load into
 /// @param filename path to the file containing binary memory contents
 /// @return binary size on success, negative on error
-int rv_simulator_load_memory_from_file(rv_simulator_t* sim, const char* filename);
+int rv_simulator_load_memory_from_file(rv_simulator_t* sim, const char* filename, rv_mem_filetype_t type, uint32_t offset);
 
 #endif

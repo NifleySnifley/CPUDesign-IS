@@ -179,7 +179,7 @@ int main(int argc, char** argv, char** env) {
     rv_simulator_init_monolithic_memory(&simulator, memsize_words * 4);
     // simulator.instr_trace = sim_tracefn;
     // TODO: Ceiling divide here!
-    int binsize_words = rv_simulator_load_memory_from_file(&simulator, memfile) / 4;
+    int binsize_words = rv_simulator_load_memory_from_file(&simulator, memfile, FILETYPE_AUTO, 0) / 4;
     if (verbose) printf("Loading binary, size = %d words\n", binsize_words);
     if (binsize_words < 0) {
         printf("Error opening memory file!\n");

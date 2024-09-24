@@ -1,3 +1,4 @@
+#! /usr/bin/env python3
 from bdfparser import Font
 from PIL import Image
 import argparse
@@ -20,8 +21,8 @@ HEIGHT = font.headers["fbby"]
 outlines = []
 
 for ci in range(256):
-    g = font.glyph(chr(ci))
-    if g is not None:
+    if ci in font.glyphs:
+        g = font.glyph(chr(ci))
         rows = g.draw().todata(5)  # Get data as integers
         outlines += rows
     else:
@@ -31,3 +32,10 @@ for ci in range(256):
 if args.format == "bin":
     with open(args.output, "w") as f:
         f.writelines([bin(r)[2:].rjust(8, "0") + "\n" for r in outlines])
+elif args.format == "hex":
+    with open(args.output, "w") as f:
+        f.writelines([hex(r)[2:].rjust(2, "0") + "\n" for r in outlines])
+elif args.format == "raw":
+    with open(args.output, "wb") as f:
+        f.write(bytes(outlines))
+# TODO: Implement

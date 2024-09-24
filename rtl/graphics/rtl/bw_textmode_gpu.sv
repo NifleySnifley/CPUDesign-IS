@@ -2,7 +2,8 @@
 `include "fontROM_bram.sv"
 
 module bw_textmode_gpu #(
-    parameter BASE_ADDR = 32'h8000
+    parameter SCREENBUFFER_BASE_ADDR = 32'h8000,
+    parameter FONTRAM_BASE_ADDR = 32'h10000
 ) (
     // CLK for bus domain
     input wire clk,
@@ -162,15 +163,15 @@ module bw_textmode_gpu #(
 
 
 
-    // BUS ACCESS of VRAM
-    wire [31:0] local_addr = addr - BASE_ADDR;
+    // BUS ACCESS of SCREENBUFFER!
+    wire [31:0] local_addr = addr - SCREENBUFFER_BASE_ADDR;
     reg [SB_ADDRBITS-1:0] xact_addr;
 
     // Don't lock up when attempted read, just give zeros
     assign ready = ren | (word_addr == xact_addr);
 
     wire [SB_ADDRBITS-1:0] word_addr = local_addr[1+SB_ADDRBITS:2];
-    assign active = (addr >= BASE_ADDR) && (addr < (BASE_ADDR + SB_NWORDS * 4));
+    assign active = (addr >= SCREENBUFFER_BASE_ADDR) && (addr < (SCREENBUFFER_BASE_ADDR + SB_NWORDS));
 
     always @(posedge clk) begin
         if (wen & active) begin

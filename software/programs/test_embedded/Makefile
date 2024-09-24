@@ -1,9 +1,10 @@
 OBJCOPY=../../simulator/asm2bin.py
 LIBDIR=../../library
 SIMULATOR=../../simulator/build/sim_emulator
+COMPILE=riscv32-unknown-elf-gcc -I$(LIBDIR) -g -march=rv32i -mabi=ilp32  -Wall -nostartfiles  -ffunction-sections -fdata-sections -mstrict-align -Wl,--gc-sections -ffp-contract=off -lm -lc -lgcc -Tmap.ld crt0.S
 
 .PHONY: all
-all: build/main.hex build/main.bin
+all: build/main.hex build/main.bin build/graphics_test.bin
 
 .PHONY: sim
 sim: build/main.bin
@@ -22,8 +23,12 @@ dissasemble: build/main.elf
 
 .PHONY: build/main.elf
 build/main.elf: build main.c
-	riscv32-unknown-elf-gcc -I$(LIBDIR) -g -march=rv32i -mabi=ilp32  -Wall -nostartfiles  -ffunction-sections -fdata-sections -mstrict-align -Wl,--gc-sections -ffp-contract=off -lm -lc -lgcc -Tmap.ld crt0.S main.c -o build/main.elf
+	$(COMPILE) main.c -o build/main.elf
 	riscv32-unknown-elf-size build/main.elf
+
+build/graphics_test.bin: graphics_test.c
+	$(COMPILE) graphics_test.c -o build/graphics_test.elf
+	$(OBJCOPY) build/graphics_test.elf --raw -o build/graphics_test.bin
 
 build:
 	mkdir -p build

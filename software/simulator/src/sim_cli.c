@@ -92,7 +92,7 @@ int main(int argc, char** argv) {
 
 
     // Read initial memory contents from binary file (from assembler/compiler converted with objdump from elf)
-    int numloaded = rv_simulator_load_memory_from_file(&sim, memory_input_file);
+    int numloaded = rv_simulator_load_memory_from_file(&sim, memory_input_file, FILETYPE_AUTO, 0);
 
     while (1) {
         if (sim.pc == (uint32_t)-1) {

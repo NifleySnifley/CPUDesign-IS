@@ -41,7 +41,10 @@ if(subprocess.call(["riscv32-unknown-elf-objcopy", "-O", "binary", "-g", tf, tfb
 
 with open(tfbin, 'rb') as bf:
     bs = bf.read()
+    off = len(bs) % 4
+    bs += bytes([0 for i in range(4-off)])
     assert(len(bs) % 4 == 0)
+
     if (args.pad is not None):
         if (len(bs) > args.pad):
             print("Error, binary file is larger than requested padding size! Aborting")
