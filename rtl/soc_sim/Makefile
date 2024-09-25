@@ -1,7 +1,7 @@
 # Makefile
 SIM ?= icarus
 TOPLEVEL_LANG ?= verilog
-VERILOG_SOURCES += $(PWD)/soc_sim.sv $(PWD)/../cpu/cpu.sv $(PWD)/../alu/alu.sv $(PWD)/../common/memory.sv
+VERILOG_SOURCES += $(PWD)/soc_sim.sv $(PWD)/../cpu/cpu.sv $(PWD)/../alu/alu.sv $(PWD)/../common/memory.sv $(PWD)/../common/memory_spram.sv
 # EXTRA_ARGS += --trace --trace-structs
 WAVES=1
 

@@ -61,9 +61,12 @@ bool simulator_equals_dut(Vsoc_sim* dut, rv_simulator_t* sim) {
     }
 
     // TODO: Move to segmented memory model
-    for (int wa = 0; wa < rv_simulator_total_memory_size(sim) / 4; ++wa) {
-        if (simulator_read_word(sim, wa * 4) != dut->rootp->soc_sim__DOT__mem__DOT__memory[wa]) {
-            printf("Mismatch of memory word @ %x: sim=%u, dut=%u\n", wa * 4, simulator_read_word(sim, wa * 4), dut->rootp->soc_sim__DOT__mem__DOT__memory[wa]);
+    rv_simulator_segmented_memory_segment_t* main_memory = rv_simulator_segmented_memory_get_segment((rv_simulator_segmented_memory_t*)sim->memory_interface.memory, 0);
+    rv_simulator_segmented_memory_segment_t* spram = rv_simulator_segmented_memory_get_segment((rv_simulator_segmented_memory_t*)sim->memory_interface.memory, 1);
+
+    for (int wa = 0; wa < main_memory->size / 4; ++wa) {
+        if (simulator_read_word(sim, wa * 4 + main_memory->start_address) != dut->rootp->soc_sim__DOT__mem__DOT__memory[wa]) {
+            printf("Mismatch of memory word @ %x: sim=%u, dut=%u\n", wa * 4, simulator_read_word(sim, wa * 4 + main_memory->start_address), dut->rootp->soc_sim__DOT__mem__DOT__memory[wa]);
             return false;
         }
     }
@@ -175,8 +178,14 @@ int main(int argc, char** argv, char** env) {
     rv_simulator_t simulator;
     constexpr uint32_t memsize_words = (sizeof(dut->rootp->soc_sim__DOT__mem__DOT__memory.m_storage)) / 4;
 
+    constexpr uint32_t spram_baseaddr = 0x00f00000;
+    constexpr uint32_t spram_words = 32768;
+
     rv_simulator_init(&simulator);
-    rv_simulator_init_monolithic_memory(&simulator, memsize_words * 4);
+    rv_simulator_segmented_memory_t* sim_mem = rv_simulator_init_segmented_memory(&simulator);
+    rv_simulator_segmented_memory_add_segment(sim_mem, 0, memsize_words * 4, "BRAM", false);
+    rv_simulator_segmented_memory_add_segment(sim_mem, spram_baseaddr, spram_words * 4, "SPRAM", false);
+
     // simulator.instr_trace = sim_tracefn;
     // TODO: Ceiling divide here!
     int binsize_words = rv_simulator_load_memory_from_file(&simulator, memfile, FILETYPE_AUTO, 0) / 4;
@@ -184,6 +193,10 @@ int main(int argc, char** argv, char** env) {
     if (binsize_words < 0) {
         printf("Error opening memory file!\n");
         exit(EXIT_ERROR);
+    }
+
+    for (int i = 0; i < spram_words * 4; ++i) {
+        rv_simulator_write_byte(&simulator, spram_baseaddr + i, 0xAA);
     }
 
     // Copy initialization memory from sim to DUT

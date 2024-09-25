@@ -3,7 +3,7 @@
 `ifdef IVERILOG_LINT
 `include "../cpu/cpu.sv"
 `include "../common/memory.sv"
-`include "../fpga/memory_spram.sv"
+`include "../common/memory_spram.sv"
 `include "../common/bus_hub_1.sv"
 `include "../common/bus_hub_2.sv"
 `include "../common/bus_hub_3.sv"

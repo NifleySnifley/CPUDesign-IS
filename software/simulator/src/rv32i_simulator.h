@@ -116,6 +116,7 @@ typedef struct rv_simulator_segmented_memory_t {
 uint8_t rv_simulator_segmented_memory_read(void* segmem, uint32_t addr);
 void rv_simulator_segmented_memory_write(void* segmem, uint32_t addr, uint8_t data);
 void rv_simulator_segmented_memory_add_segment(rv_simulator_segmented_memory_t* segmem, uint32_t start_address, uint32_t size, const char* name, bool readonly);
+rv_simulator_segmented_memory_segment_t* rv_simulator_segmented_memory_get_segment(rv_simulator_segmented_memory_t* segmem, uint32_t index);
 void rv_simulator_segmented_memory_init(rv_simulator_segmented_memory_t* segmem);
 void rv_simulator_segmented_memory_deinit(rv_simulator_segmented_memory_t* segmem);
 
@@ -213,8 +214,8 @@ void rv_simulator_pprint_memory(rv_simulator_t* sim);
 /// @param sim simulator
 void rv_simulator_pprint_registers(rv_simulator_t* sim);
 
-#define rv_simulator_read_byte(simptr, idx) sim->memory_interface.read_byte_fn(sim->memory_interface.memory, idx)
-#define rv_simulator_write_byte(simptr, idx, b) sim->memory_interface.write_byte_fn(sim->memory_interface.memory, idx, b)
+#define rv_simulator_read_byte(simptr, idx) (simptr)->memory_interface.read_byte_fn((simptr)->memory_interface.memory, idx)
+#define rv_simulator_write_byte(simptr, idx, b) (simptr)->memory_interface.write_byte_fn((simptr)->memory_interface.memory, idx, b)
 
 typedef enum rv_mem_filetype_t {
     FILETYPE_AUTO,

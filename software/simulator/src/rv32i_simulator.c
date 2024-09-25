@@ -720,3 +720,7 @@ void rv_simulator_segmented_memory_deinit(rv_simulator_segmented_memory_t* segme
     free(segmem->segments);
     segmem->n_segments = 0;
 }
+
+rv_simulator_segmented_memory_segment_t* rv_simulator_segmented_memory_get_segment(rv_simulator_segmented_memory_t* segmem, uint32_t index) {
+    return &segmem->segments[index];
+}

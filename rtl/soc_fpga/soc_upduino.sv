@@ -3,7 +3,7 @@
 `ifdef IVERILOG_LINT
 `include "../cpu/cpu.sv"
 `include "../common/memory.sv"
-`include "../fpga/memory_spram.sv"
+`include "../common/memory_spram.sv"
 `include "../common/bus_hub_1.sv"
 `include "../common/bus_hub_2.sv"
 `include "../common/bus_hub_3.sv"
@@ -54,7 +54,7 @@ module soc_upduino #(
     output gpio_48,
     output gpio_45,
     // output gpio_47,
-    // output gpio_46,
+    output gpio_46,
 
     input gpio_2,
     input gpio_20
@@ -118,39 +118,16 @@ module soc_upduino #(
         .host_wen(bus_wen),
         .host_ren(bus_ren),
 
-        .device_address({mem_addr, pp_addr, spram_addr}),
-        .device_data_write({mem_wdata, pp_wdata, spram_wdata}),
-        .device_write_mask({mem_wmask, pp_wmask, spram_wmask}),
-        .device_ren({mem_rstrobe, pp_ren, spram_ren}),
-        .device_wen({mem_wstrobe, pp_wen, spram_wen}),
-        .device_ready({mem_done, pp_done, spram_done}),
-        .device_data_read({mem_rdata, pp_rdata, spram_rdata}),
-        .device_active({mem_active, pp_active, spram_active})  // SPRAM ACTIVE!
+        .device_address({mem_addr, spram_addr, pp_addr}),
+        .device_data_write({mem_wdata, spram_wdata, pp_wdata}),
+        .device_write_mask({mem_wmask, spram_wmask, pp_wmask}),
+        .device_ren({mem_rstrobe, spram_ren, pp_ren}),
+        .device_wen({mem_wstrobe, spram_wen, pp_wen}),
+        .device_ready({mem_done, spram_done, pp_done}),
+        .device_data_read({mem_rdata, spram_rdata, pp_rdata}),
+        .device_active({mem_active, spram_active, pp_active})  // SPRAM ACTIVE!
     );
 
-
-    // bus_hub_2 hub (
-    //     .clk(core_clk),
-    //     .host_address(bus_addr),
-    //     .host_data_write(bus_wdata),
-    //     .host_write_mask(bus_wmask),
-    //     .host_data_read(bus_rdata),
-    //     .host_ready(bus_done),
-    //     .host_wen(bus_wen),
-    //     .host_ren(bus_ren),
-
-    //     .device_address({mem_addr, pp_addr}),
-    //     .device_data_write({mem_wdata, pp_wdata}),
-    //     .device_write_mask({mem_wmask, pp_wmask}),
-    //     .device_ren({mem_rstrobe, pp_ren}),
-    //     .device_wen({mem_wstrobe, pp_wen}),
-    //     .device_ready({mem_done, pp_done}),
-    //     .device_data_read({mem_rdata, pp_rdata}),
-    //     .device_active({mem_active, pp_active})
-    // );
-
-
-    // TODO: Find a better way to make all these WIRES!!!
     wire [31:0] mem_addr;
     wire [31:0] mem_wdata;
     wire [3:0] mem_wmask;
@@ -188,7 +165,7 @@ module soc_upduino #(
     // assign gpio_45 = spram_ren;
     // assign gpio_47 = spram_done;
 
-    memory_spram spram (
+    ice40_spram spram (
         .clk(core_clk),
         .addr(spram_addr),
         .wdata(spram_wdata),

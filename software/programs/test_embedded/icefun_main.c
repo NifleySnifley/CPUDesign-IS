@@ -1,6 +1,9 @@
 #include <stdint.h>
-#include "led_matrix.h"
-#include "cpu_time.h"
+#include "soc_io.h"
+#include "soc_core.h"
+
+#define LED_MATRIX_ROW_SEL PARALLEL_IO_B[1]
+#define LED_MATRIX_PIXELS PARALLEL_IO_B[0]
 
 int main() {
 	int i = 0;

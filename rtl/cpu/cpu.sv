@@ -134,7 +134,7 @@ module cpu (
 
     wire [31:0] loadstore_addr = rs1_value + (inst_is_store ? imm_s : imm_i);
 
-    assign bus_addr = (state[STATE_INST_FETCH_IDX] || state[STATE_WRITEBACK_IDX]) ? pc : ((inst_is_store || inst_is_load) ? loadstore_addr : pc);
+    assign bus_addr = (state[STATE_INST_FETCH_IDX]) ? pc : ((inst_is_store || inst_is_load) ? loadstore_addr : pc);
     wire [1:0] mem_loadstore_offset = loadstore_addr[1:0];
     // TODO: Actually use this read strobe
     assign bus_ren = inst_is_load && state[STATE_EXEC_IDX] || state[STATE_INST_FETCH_IDX];  // Always for just mem reads!

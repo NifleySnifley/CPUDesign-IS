@@ -5,6 +5,10 @@
 		"*.html": "html",
 		"*.ipynb": "python",
 		"led_matrix.h": "c",
-		"cpu_time.h": "c"
+		"cpu_time.h": "c",
+		"stdint.h": "c",
+		"cstdint": "c",
+		"soc_io.h": "c",
+		"soc_core.h": "c"
 	}
 }

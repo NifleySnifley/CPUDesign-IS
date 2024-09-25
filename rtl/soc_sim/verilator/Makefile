@@ -1,13 +1,13 @@
 VERILOG_DIR=../..
-HDL_FILES=$(VERILOG_DIR)/soc_sim/soc_sim.sv $(VERILOG_DIR)/alu/alu.sv $(VERILOG_DIR)/common/memory.sv $(VERILOG_DIR)/cpu/cpu.sv 
+HDL_FILES=$(VERILOG_DIR)/soc_sim/soc_sim.sv $(VERILOG_DIR)/alu/alu.sv $(VERILOG_DIR)/common/memory.sv $(VERILOG_DIR)/common/memory_spram.sv  $(VERILOG_DIR)/cpu/cpu.sv $(VERILOG_DIR)/common/bus_hub_2.sv
 SIM_DIR=../../../software/simulator
 ASSEMBLER=$(SIM_DIR)/asm2bin.py
-PROGRAM_FILE=../../../software/programs/assembly/test_program.S
+PROGRAM_FILE=program.S
 
 .PHONY: run
 
 run:  obj_dir/Vsoc_sim obj_dir/memory.bin
-	obj_dir/Vsoc_sim -v -d -l256 obj_dir/memory.bin
+	obj_dir/Vsoc_sim -v -d -l256 -t soc_sim.vcd obj_dir/memory.bin
 
 obj_dir/memory.bin: $(PROGRAM_FILE)
 	$(ASSEMBLER) $(PROGRAM_FILE) --raw --assemble -o obj_dir/memory.bin

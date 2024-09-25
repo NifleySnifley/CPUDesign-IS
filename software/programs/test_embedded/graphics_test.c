@@ -1,7 +1,7 @@
 #include <stdint.h>
-#define F_CPU 73421978
-#include "led_matrix.h"
-#include "cpu_time.h"
+// #define F_CPU 73421978
+#include "soc_io.h"
+#include "soc_core.h"
 #include <string.h>
 
 #define VRAM(i) *((uint8_t*)(0x8000+i))
@@ -23,14 +23,15 @@ int main() {
 	}
 
 	while (1) {
-		delay_ms(1000);
-		LED_MATRIX_PIXELS = 0xAA;
+		PARALLEL_IO_B[0] = 0xAA;
 		write_word(hello, 0, 20);
 		delay_ms(1000);
-		LED_MATRIX_PIXELS = 0x55;
+		asm("ebreak");
+		PARALLEL_IO_B[0] = 0x55;
 		write_word(world, 0, 20);
-		LED_MATRIX_ROW_SEL = 0b1111;
-		// asm("ebreak");
+		PARALLEL_IO_B[1] = 0b1111;
+		delay_ms(1000);
+		asm("ebreak");
 	}
 
 	return 0;

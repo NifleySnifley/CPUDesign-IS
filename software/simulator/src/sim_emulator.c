@@ -27,6 +27,8 @@
 #define FONTRAM_SIZE_B (256*16)
 #define FONTRAM_INITFILE "build/font.bin"
 
+#define VGA_SCALE 1
+
 static volatile bool EXIT = false;
 static bool enable_leds = false;
 static bool enable_vga = false;
@@ -57,30 +59,30 @@ void* sdl_window_thread_fn(void* arg) {
 		return 0;
 	}
 
-	SDL_Window* led_window = SDL_CreateWindow("LED Matrix",
-		SDL_WINDOWPOS_UNDEFINED,
-		SDL_WINDOWPOS_UNDEFINED,
-		LED_SIZE * 8, LED_SIZE * 4,
-		SDL_WINDOW_SHOWN);
 
-	SDL_Window* vga_window = SDL_CreateWindow("VGA Display",
-		SDL_WINDOWPOS_UNDEFINED,
-		SDL_WINDOWPOS_UNDEFINED,
-		SCREEN_WIDTH, SCREEN_HEIGHT,
-		SDL_WINDOW_SHOWN);
+	SDL_Window* led_window, * vga_window;
+
+	if (enable_leds)
+		led_window = SDL_CreateWindow("LED Matrix",
+			SDL_WINDOWPOS_UNDEFINED,
+			SDL_WINDOWPOS_UNDEFINED,
+			LED_SIZE * 8, LED_SIZE * 4,
+			SDL_WINDOW_SHOWN);
+
+	if (enable_vga)
+		vga_window = SDL_CreateWindow("VGA Display",
+			SDL_WINDOWPOS_UNDEFINED,
+			SDL_WINDOWPOS_UNDEFINED,
+			SCREEN_WIDTH * VGA_SCALE, SCREEN_HEIGHT * VGA_SCALE,
+			SDL_WINDOW_SHOWN);
 
 	if (!vga_window || !led_window) {
 		printf("Windows could not be created!\n"
 			"SDL_Error: %s\n", SDL_GetError());
 	}
 
-	SDL_Renderer* led_renderer = SDL_CreateRenderer(led_window, -1, SDL_RENDERER_ACCELERATED);
-	// SDL_Renderer* vga_renderer = SDL_CreateRenderer(vga_window, -1, SDL_RENDERER_ACCELERATED);
-
-	if (!led_renderer) {
-		printf("Renderers could not be created!\n"
-			"SDL_Error: %s\n", SDL_GetError());
-	}
+	SDL_Renderer* led_renderer;
+	if (enable_leds) led_renderer = SDL_CreateRenderer(led_window, -1, SDL_RENDERER_ACCELERATED);
 
 	printf("Opened GUI\n");
 
@@ -90,7 +92,9 @@ void* sdl_window_thread_fn(void* arg) {
 	led_rect.h = LED_SIZE;
 
 	SDL_Surface* character_bitmap = SDL_CreateRGBSurface(0, FONT_WIDTH, FONT_HEIGHT, 32, 0, 0, 0, 0);
-	SDL_Surface* vga_surface = SDL_GetWindowSurface(vga_window);
+	SDL_Surface* vga_surface;
+
+	if (enable_vga) vga_surface = SDL_GetWindowSurface(vga_window);
 
 	// Event loop
 	while (!EXIT) {
@@ -102,120 +106,75 @@ void* sdl_window_thread_fn(void* arg) {
 			}
 		}
 
-		SDL_SetRenderDrawColor(led_renderer, 0xFF, 0xFF, 0xFF, 0xFF);
-		SDL_RenderClear(led_renderer);
+		if (enable_leds) {
+			SDL_SetRenderDrawColor(led_renderer, 0xFF, 0xFF, 0xFF, 0xFF);
+			SDL_RenderClear(led_renderer);
 
-		uint8_t led_row = rv_simulator_read_byte(sim, 0xf000);
-		uint8_t led_row_select = rv_simulator_read_byte(sim, 0xf001);
+			uint8_t led_row = rv_simulator_read_byte(sim, 0xf000);
+			uint8_t led_row_select = rv_simulator_read_byte(sim, 0xf001);
 
-		for (int r = 0; r < 4; ++r) {
-			if (led_row_select & (1 << r))
-				led_state[r] = led_row;
+			for (int r = 0; r < 4; ++r) {
+				if (led_row_select & (1 << r))
+					led_state[r] = led_row;
 
 
-			for (int i = 0; i < 8; ++i) {
-				led_rect.x = LED_SIZE * i;
-				led_rect.y = LED_SIZE * r;
-				if ((led_state[r] >> i) & 1) {
-					SDL_SetRenderDrawColor(led_renderer, 0xFF, 0x00, 0x00, 0xFF);
-				} else {
-					SDL_SetRenderDrawColor(led_renderer, 0x00, 0x00, 0x00, 0xFF);
+				for (int i = 0; i < 8; ++i) {
+					led_rect.x = LED_SIZE * i;
+					led_rect.y = LED_SIZE * r;
+					if ((led_state[r] >> i) & 1) {
+						SDL_SetRenderDrawColor(led_renderer, 0xFF, 0x00, 0x00, 0xFF);
+					} else {
+						SDL_SetRenderDrawColor(led_renderer, 0x00, 0x00, 0x00, 0xFF);
+					}
+					SDL_RenderFillRect(led_renderer, &led_rect);
 				}
-				SDL_RenderFillRect(led_renderer, &led_rect);
 			}
-		}
 
-		SDL_RenderPresent(led_renderer);
+			SDL_RenderPresent(led_renderer);
+		}
 
 		//////////////////// VGA //////////////////
-		// SDL_SetRenderDrawColor(vga_renderer, 0x00, 0x00, 0x00, 0xFF);
-		// SDL_RenderClear(vga_renderer);
 
-		for (int idx = 0; idx < (SCREEN_COLS * SCREEN_ROWS); ++idx) {
-			int row = idx / SCREEN_COLS;
-			int col = idx % SCREEN_COLS;
+		if (enable_vga) {
+			for (int idx = 0; idx < (SCREEN_COLS * SCREEN_ROWS); ++idx) {
+				int row = idx / SCREEN_COLS;
+				int col = idx % SCREEN_COLS;
 
-			uint8_t ch = rv_simulator_read_byte(sim, SCREENBUFFER_BASE_ADDR + idx);
-			if (ch == 0) continue;
-			// printf("char @ (%d, %d) = %d\n", col, row, ch);
+				uint8_t ch = rv_simulator_read_byte(sim, SCREENBUFFER_BASE_ADDR + idx);
+				if (ch == 0) continue;
 
-			for (int r = 0; r < FONT_HEIGHT; ++r) {
-				uint8_t rowbin = rv_simulator_read_byte(sim, FONTRAM_BASE_ADDR + FONT_HEIGHT * ch + r);
-				for (int c = 0; c < FONT_WIDTH; ++c) {
-					set_pixel(character_bitmap, c, r, rowbin & (0x80 >> c) ? 0xFFFFFFFF : 0xFF000000);
+				for (int r = 0; r < FONT_HEIGHT; ++r) {
+					uint8_t rowbin = rv_simulator_read_byte(sim, FONTRAM_BASE_ADDR + FONT_HEIGHT * ch + r);
+					for (int c = 0; c < FONT_WIDTH; ++c) {
+						set_pixel(character_bitmap, c, r, rowbin & (0x80 >> c) ? 0xFFFFFFFF : 0xFF000000);
+					}
 				}
+
+				SDL_Rect dest;
+				dest.x = col * FONT_WIDTH * VGA_SCALE;
+				dest.y = row * FONT_HEIGHT * VGA_SCALE;
+				dest.w = FONT_WIDTH * VGA_SCALE;
+				dest.h = FONT_HEIGHT * VGA_SCALE;
+				SDL_BlitScaled(character_bitmap, NULL, vga_surface, &dest);
 			}
 
-			SDL_Rect dest;
-			dest.x = col * FONT_WIDTH;
-			dest.y = row * FONT_HEIGHT;
-			dest.w = FONT_WIDTH;
-			dest.h = FONT_HEIGHT;
-			SDL_BlitScaled(character_bitmap, NULL, vga_surface, &dest);
+			SDL_UpdateWindowSurface(vga_window);
 		}
-
-		// SDL_RenderPresent(vga_renderer);
-		SDL_UpdateWindowSurface(vga_window);
 	}
 
-	SDL_FreeSurface(vga_surface);
-	SDL_FreeSurface(character_bitmap);
+	if (enable_vga) SDL_FreeSurface(vga_surface);
+	if (enable_vga) SDL_FreeSurface(character_bitmap);
 
 	EXIT = true;
-	SDL_DestroyRenderer(led_renderer);
-	// SDL_DestroyRenderer(vga_renderer);
+	if (enable_leds) SDL_DestroyRenderer(led_renderer);
 
 
-	SDL_DestroyWindow(led_window);
-	SDL_DestroyWindow(vga_window);
+	if (enable_leds) SDL_DestroyWindow(led_window);
+	if (enable_vga) SDL_DestroyWindow(vga_window);
 
 	SDL_Quit();
 }
 
-
-// void* vga_window_thread_fn(void* arg) {
-// 	rv_simulator_t* sim = (rv_simulator_t*)arg;
-
-// 	SDL_Window* window = SDL_CreateWindow("VGA Display",
-// 		SDL_WINDOWPOS_UNDEFINED,
-// 		SDL_WINDOWPOS_UNDEFINED,
-// 		SCREEN_WIDTH, SCREEN_HEIGHT,
-// 		SDL_WINDOW_SHOWN);
-// 	if (!window) {
-// 		printf("Window could not be created!\n"
-// 			"SDL_Error: %s\n", SDL_GetError());
-// 	} else {
-// 		SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-// 		if (!renderer) {
-// 			printf("Renderer could not be created!\n"
-// 				"SDL_Error: %s\n", SDL_GetError());
-// 		} else {
-// 			printf("Opened VGA Display\n");
-
-// 			// Event loop
-// 			while (!EXIT) {
-// 				SDL_Event e;
-// 				if (SDL_PollEvent(&e)) {
-// 					if (e.type == SDL_QUIT) {
-// 						EXIT = true;
-// 					}
-// 				}
-
-// 				SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF);
-// 				SDL_RenderClear(renderer);
-
-// 				SDL_RenderPresent(renderer);
-// 			}
-
-// 			EXIT = true;
-// 			SDL_DestroyRenderer(renderer);
-// 		}
-
-// 		SDL_DestroyWindow(window);
-// 	}
-
-// 	SDL_Quit();
-// }
 
 void signal_handler(int signum) {
 	EXIT = 1;
