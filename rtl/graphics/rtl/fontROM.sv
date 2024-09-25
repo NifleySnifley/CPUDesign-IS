@@ -3,8 +3,7 @@ module fontROM #(
     parameter FONT_WIDTH = 8,
     parameter N_CHARS = 256,
     parameter ROM_BINFILE = "",
-    parameter ROM_HEXFILE = "",
-    parameter ASYNC = 1
+    parameter ROM_HEXFILE = ""
 ) (
     // Character index (ASCII-ish)
     input [$clog2(N_CHARS)-1:0] codepoint,
@@ -26,12 +25,5 @@ module fontROM #(
 
     wire [$clog2(FONT_HEIGHT)+$clog2(N_CHARS)-1:0] index = {codepoint, row};
 
-    // Async RAM - synthesizeable with ice40 BRAM?
-    // Answer: No... but it doesn't use a terrible amount of LUTs!
-
-    // assign bitmap_row = ROM[index];
-
-    always @(posedge clk) begin
-        bitmap_row <= ROM[index];
-    end
+    assign bitmap_row = ROM[index];
 endmodule

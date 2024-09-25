@@ -18,9 +18,8 @@ static char* hello = "Hello";
 static char* world = "World";
 
 int main() {
-	for (int i = 0; i < 2400; ++i) {
-		VRAM[i] = '!' + (uint8_t)(i % 80);
-		// VRAM[i] = (i & 1) ? 'l' : 'd';
+	for (int i = 0; i < 256; ++i) {
+		VRAM[i] = (uint8_t)i;
 	}
 
 	while (1) {

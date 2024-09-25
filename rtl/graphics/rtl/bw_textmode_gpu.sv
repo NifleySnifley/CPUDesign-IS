@@ -1,5 +1,5 @@
 `include "vga_pll.sv"
-`include "fontROM_bram.sv"
+`include "fontROM.sv"
 
 module bw_textmode_gpu #(
     parameter SCREENBUFFER_BASE_ADDR = 32'h10000,
@@ -56,7 +56,6 @@ module bw_textmode_gpu #(
         .FONT_WIDTH(8),
         .N_CHARS(256),
         .ROM_BINFILE(FONTROM_INITFILE),
-        .ASYNC(1)
     ) rom (
         .clk(clk_pix),
         .codepoint(current_char),
