@@ -2,8 +2,9 @@
 `include "fontROM_bram.sv"
 
 module bw_textmode_gpu #(
-    parameter SCREENBUFFER_BASE_ADDR = 32'h8000,
-    parameter FONTRAM_BASE_ADDR = 32'h10000
+    parameter SCREENBUFFER_BASE_ADDR = 32'h10000,
+    parameter FONTROM_INITFILE = ""
+    // parameter FONTRAM_BASE_ADDR = 32'h10000
 ) (
     // CLK for bus domain
     input wire clk,
@@ -14,7 +15,7 @@ module bw_textmode_gpu #(
     input wire [3:0] wmask,
     input wire wen,
     input wire ren,
-    output reg [31:0] rdata,  // Read data output
+    output wire [31:0] rdata,  // Read data output
     output wire ready,  // Read or write done
     output wire active,
 
@@ -53,8 +54,8 @@ module bw_textmode_gpu #(
         .FONT_HEIGHT(16),
         .FONT_WIDTH(8),
         .N_CHARS(256),
-        .ROM_BINFILE("spleen8x16.txt"),
-        .ASYNC(0)
+        .ROM_BINFILE(FONTROM_INITFILE),
+        .ASYNC(1)
     ) rom (
         .clk(clk_pix),
         .codepoint(current_char),
@@ -149,14 +150,18 @@ module bw_textmode_gpu #(
 
     assign video = (~blanking) & current_char_bitmap[char_col];
 
+    reg [31:0] char_reg;
     always @(posedge clk_pix) begin
-        // Demux screenbuffer words
+        char_reg <= screenbuffer[screenbuffer_index[9:0]];
+    end
+    // Demux screenbuffer words
+    always_comb begin
         case (screenbuffer_index[1:0])
-            0: current_char <= screenbuffer[screenbuffer_index[9:0]][7:0];
-            1: current_char <= screenbuffer[screenbuffer_index[9:0]][15:8];
-            2: current_char <= screenbuffer[screenbuffer_index[9:0]][23:16];
-            3: current_char <= screenbuffer[screenbuffer_index[9:0]][31:24];
-            default: current_char <= 0;
+            0: current_char = char_reg[7:0];
+            1: current_char = char_reg[15:8];
+            2: current_char = char_reg[23:16];
+            3: current_char = char_reg[31:24];
+            default: current_char = 0;
         endcase
     end
 
@@ -171,7 +176,7 @@ module bw_textmode_gpu #(
     assign ready = ren | (word_addr == xact_addr);
 
     wire [SB_ADDRBITS-1:0] word_addr = local_addr[1+SB_ADDRBITS:2];
-    assign active = (addr >= SCREENBUFFER_BASE_ADDR) && (addr < (SCREENBUFFER_BASE_ADDR + SB_NWORDS));
+    assign active = (addr >= SCREENBUFFER_BASE_ADDR) && (addr < (SCREENBUFFER_BASE_ADDR + SB_NWORDS*4));
 
     always @(posedge clk) begin
         if (wen & active) begin

@@ -2,7 +2,7 @@ module fontROM #(
     parameter FONT_HEIGHT = 16,
     parameter FONT_WIDTH = 8,
     parameter N_CHARS = 256,
-    parameter ROM_BINFILE = "spleen.txt",
+    parameter ROM_BINFILE = "",
     parameter ROM_HEXFILE = "",
     parameter ASYNC = 1
 ) (
@@ -14,7 +14,7 @@ module fontROM #(
     // Read clock (ASYNC=0)
     input clk,
     // Output row of the character bitmap
-    output reg [FONT_WIDTH-1:0] bitmap_row
+    output wire [FONT_WIDTH-1:0] bitmap_row
 );
     reg [FONT_WIDTH-1:0] ROM[(N_CHARS*FONT_HEIGHT)-1:0];
 

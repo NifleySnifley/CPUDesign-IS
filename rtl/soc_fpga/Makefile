@@ -12,7 +12,7 @@ PACKAGE=cb132 # Upduino: sg48, iceFUN: cb132
 PROGTOOL=iceFUNprog #Upduino: "iceprog -d i:0x0403:0x6014", iceFUN: iceFUNprog
 
 PROJNAME=soc_iceFUN
-SRCFILES=../cpu/cpu.sv ../alu/alu.sv ./$(PROJNAME).sv ../common/memory_spram.sv ../common/memory.sv ../common/bus_hub_1.sv ../common/bus_hub_2.sv ../common/bus_hub_3.sv ../fpga/parallel_port.sv
+SRCFILES=../cpu/cpu.sv ../alu/alu.sv ./$(PROJNAME).sv ../common/memory_spram.sv ../common/memory.sv ../common/bus_hub_4.sv ../common/bus_hub_2.sv ../common/bus_hub_3.sv ../fpga/parallel_port.sv ../graphics/rtl/bw_textmode_gpu.sv
 TOPNAME=$(PROJNAME)
 PNR_ARGS=--$(DEVICE) --package $(PACKAGE) --json $(BUILDDIR)/$(PROJNAME).json --pcf ./$(PROJNAME).pcf --asc $(BUILDDIR)/$(PROJNAME)_base.asc
 
@@ -26,7 +26,7 @@ $(BUILDDIR)/$(PROJNAME)_base.asc: $(BUILDDIR) $(BUILDDIR)/$(PROJNAME).json ./$(P
 	nextpnr-ice40 $(PNR_ARGS)
 
 $(BUILDDIR)/$(PROJNAME).json: $(BUILDDIR) $(SRCFILES) $(BUILDDIR)/phony.hex
-	yosys -q -p "read_verilog -I./ -I$(COMMONDIR) -sv $(SRCFILES); synth_ice40 -top $(TOPNAME) -json $(BUILDDIR)/$(PROJNAME).json" 
+	yosys -q -p "read_verilog -I./ -I$(COMMONDIR) -I../gpu/rtl -sv $(SRCFILES); synth_ice40 -top $(TOPNAME) -json $(BUILDDIR)/$(PROJNAME).json" 
 
 $(BUILDDIR)/phony.hex: $(BUILDDIR)
 	icebram -g 32 $(MEMSIZE) > $(BUILDDIR)/phony.hex

@@ -4,7 +4,7 @@
 #include "soc_core.h"
 #include <string.h>
 
-#define VRAM(i) *((uint8_t*)(0x8000+i))
+#define VRAM(i) *((uint8_t*)(0x10000+i))
 
 void write_word(char* word, int x, int y) {
 	int start_idx = y * 80 + x;

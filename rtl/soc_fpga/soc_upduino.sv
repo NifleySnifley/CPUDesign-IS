@@ -7,7 +7,9 @@
 `include "../common/bus_hub_1.sv"
 `include "../common/bus_hub_2.sv"
 `include "../common/bus_hub_3.sv"
+`include "../common/bus_hub_4.sv"
 `include "../fpga/parallel_port.sv"
+`include "../graphics/rtl/bw_textmode_gpu.sv"
 `endif
 
 module soc_upduino #(
@@ -37,9 +39,10 @@ module soc_upduino #(
     // output gpio_34,
     // output gpio_43,
     // output gpio_36,
-    // output gpio_42,
-    // output gpio_38,
-    // output gpio_28,
+    output gpio_42,
+    output gpio_38,
+    output gpio_28,
+
     // output gpio_12,
     // output gpio_21,
     // output gpio_13,
@@ -52,17 +55,17 @@ module soc_upduino #(
     output gpio_4,
     output gpio_3,
     output gpio_48,
-    output gpio_45,
+    // output gpio_45,
     // output gpio_47,
-    output gpio_46,
+    // output gpio_46,
 
     input gpio_2,
     input gpio_20
     // input gpio_10
 );
     wire clk12MHz = gpio_20;
-    assign gpio_46 = instruction_sync;
-    assign spi_cs  = 1'b1;
+    // assign gpio_46 = instruction_sync;
+    assign spi_cs = 1'b1;
 
     wire [7:0] debug_word;
     assign {gpio_18, gpio_11, gpio_9, gpio_6, gpio_44, gpio_4, gpio_3, gpio_48} = debug_word;
@@ -108,7 +111,7 @@ module soc_upduino #(
         .dbg_pc(pc_output)
     );
 
-    bus_hub_3 hub (
+    bus_hub_4 hub (
         .clk(core_clk),
         .host_address(bus_addr),
         .host_data_write(bus_wdata),
@@ -118,14 +121,14 @@ module soc_upduino #(
         .host_wen(bus_wen),
         .host_ren(bus_ren),
 
-        .device_address({mem_addr, spram_addr, pp_addr}),
-        .device_data_write({mem_wdata, spram_wdata, pp_wdata}),
-        .device_write_mask({mem_wmask, spram_wmask, pp_wmask}),
-        .device_ren({mem_rstrobe, spram_ren, pp_ren}),
-        .device_wen({mem_wstrobe, spram_wen, pp_wen}),
-        .device_ready({mem_done, spram_done, pp_done}),
-        .device_data_read({mem_rdata, spram_rdata, pp_rdata}),
-        .device_active({mem_active, spram_active, pp_active})  // SPRAM ACTIVE!
+        .device_address({mem_addr, spram_addr, pp_addr, gpu_addr}),
+        .device_data_write({mem_wdata, spram_wdata, pp_wdata, gpu_wdata}),
+        .device_write_mask({mem_wmask, spram_wmask, pp_wmask, gpu_wmask}),
+        .device_ren({mem_rstrobe, spram_ren, pp_ren, gpu_ren}),
+        .device_wen({mem_wstrobe, spram_wen, pp_wen, gpu_wen}),
+        .device_ready({mem_done, spram_done, pp_done, gpu_done}),
+        .device_data_read({mem_rdata, spram_rdata, pp_rdata, gpu_rdata}),
+        .device_active({mem_active, spram_active, pp_active, gpu_active})  // SPRAM ACTIVE!
     );
 
     wire [31:0] mem_addr;
@@ -201,4 +204,37 @@ module soc_upduino #(
         .active(pp_active),
         .io(parallel_io)
     );
+
+    wire [31:0] gpu_addr;
+    wire [31:0] gpu_wdata;
+    wire [3:0] gpu_wmask;
+    wire gpu_wen;
+    wire gpu_ren;
+    wire [31:0] gpu_rdata;
+    wire gpu_done;
+    wire gpu_active;
+
+    bw_textmode_gpu #(
+        .FONTROM_INITFILE("../graphics/spleen8x16.txt")
+    ) gpu (
+        // CLK for bus domain
+        .clk(core_clk),
+        .rst,
+
+        .addr(gpu_addr),
+        .wdata(gpu_wdata),
+        .wmask(gpu_wmask),
+        .wen(gpu_wen),
+        .ren(gpu_ren),
+        .rdata(gpu_rdata),  // Read data output
+        .ready(gpu_done),  // Read or write done
+        .active(gpu_active),
+
+        // Input clock for video clock generation
+        .clk_12MHz(clk12MHz),
+        .hsync(gpio_42),
+        .vsync(gpio_38),
+        .video(gpio_28)  // 1-bit video output.
+    );
+
 endmodule
