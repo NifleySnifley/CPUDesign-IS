@@ -14,7 +14,7 @@ module fontROM #(
     // Read clock (ASYNC=0)
     input clk,
     // Output row of the character bitmap
-    output wire [FONT_WIDTH-1:0] bitmap_row
+    output reg [FONT_WIDTH-1:0] bitmap_row
 );
     reg [FONT_WIDTH-1:0] ROM[(N_CHARS*FONT_HEIGHT)-1:0];
 
@@ -29,14 +29,9 @@ module fontROM #(
     // Async RAM - synthesizeable with ice40 BRAM?
     // Answer: No... but it doesn't use a terrible amount of LUTs!
 
-    generate
-        if (ASYNC == 1) begin
-            assign bitmap_row = ROM[index];
-        end else begin
-            always @(posedge clk) begin
-                bitmap_row <= ROM[index];
-            end
-        end
-    endgenerate
+    // assign bitmap_row = ROM[index];
 
+    always @(posedge clk) begin
+        bitmap_row <= ROM[index];
+    end
 endmodule

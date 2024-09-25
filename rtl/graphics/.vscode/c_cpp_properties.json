@@ -2,10 +2,7 @@
     "configurations": [
         {
             "name": "Verilator",
-            "compilerPath": "/bin/clang++",
-            "compilerArgs": [
-                "-cc"
-            ],
+            "compilerPath": "/bin/g++",
             "includePath": [
                 // "${workspaceFolder}/**",
                 "/usr/include",

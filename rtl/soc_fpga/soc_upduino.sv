@@ -75,7 +75,7 @@ module soc_upduino #(
     wire rst_state;
 
     debouncer resetter (
-        .clk(clk12MHz),
+        .clk(core_clk),
         .signal(gpio_2),
         .pressed(rst_press),
         .state(rst_state)
@@ -214,6 +214,11 @@ module soc_upduino #(
     wire gpu_done;
     wire gpu_active;
 
+    wire hsync;
+    wire vsync;
+    wire video;
+    wire clk_pix;
+
     bw_textmode_gpu #(
         .FONTROM_INITFILE("../graphics/spleen8x16.txt")
     ) gpu (
@@ -232,9 +237,19 @@ module soc_upduino #(
 
         // Input clock for video clock generation
         .clk_12MHz(clk12MHz),
-        .hsync(gpio_42),
-        .vsync(gpio_38),
-        .video(gpio_28)  // 1-bit video output.
+        .hsync,
+        .vsync,
+        .video,  // 1-bit video output.
+        .clk_pix
+    );
+
+    SB_IO #(
+        .PIN_TYPE(6'b010100)  // PIN_OUTPUT_REGISTERED
+    ) vga_io[2:0] (
+        .PACKAGE_PIN({gpio_42, gpio_38, gpio_28}),
+        .OUTPUT_CLK(clk_pix),
+        .D_OUT_0({hsync, vsync, video}),
+        .D_OUT_1()
     );
 
 endmodule

@@ -3,7 +3,7 @@
 
 module bw_textmode_gpu #(
     parameter SCREENBUFFER_BASE_ADDR = 32'h10000,
-    parameter FONTROM_INITFILE = ""
+    parameter FONTROM_INITFILE = ""  // spleen8x16.txt
     // parameter FONTRAM_BASE_ADDR = 32'h10000
 ) (
     // CLK for bus domain
@@ -23,7 +23,8 @@ module bw_textmode_gpu #(
     input wire clk_12MHz,
     output reg hsync,
     output reg vsync,
-    output wire video  // 1-bit video output.
+    output wire video,  // 1-bit video output.
+    output wire clk_pix
 );
     localparam FONT_W = 8;
     localparam FONT_H = 16;
@@ -39,7 +40,7 @@ module bw_textmode_gpu #(
     reg [31:0] screenbuffer[SB_NWORDS-1:0];
 
     // 25.175 (ish) MHz
-    wire clk_pix;
+    // wire clk_pix;
     wire pll_locked;
     vga_pll pll (
         .clock_in(clk_12MHz),
@@ -62,9 +63,11 @@ module bw_textmode_gpu #(
         .row(char_row),
         .bitmap_row(current_char_bitmap)
     );
-
-
-
+    // wire [7:0] bitmap_row;
+    wire [7:0] current_char_bitmap;
+    // always @(posedge clk) begin
+    //     current_char_bitmap <= bitmap_row;
+    // end
 
     // CDC for reset signal
     reg rst_clk_pix;
@@ -123,22 +126,14 @@ module bw_textmode_gpu #(
 
     // TODO: This is SKETCH. Need to check!
     always @(posedge clk_pix) begin
-        if (rst_clk_pix) begin
+        if (rst_clk_pix | ~vsync) begin
             screenbuffer_index <= 0;
         end else if (~blanking) begin
             // At the end of a column
-            if (x[2:0] == 3'b111) begin
-                if ((x == (COLS - 1)) && (y == (ROWS - 1))) begin
-                    // Final pixel, reset
-                    screenbuffer_index <= 0;
-                end else if ((x == (COLS - 1)) && ~(y[3:0] == 4'b1111)) begin
-                    // End of a row but not the bottom (bottom keeps going)
-                    // Go to start of line (left)
-                    screenbuffer_index <= screenbuffer_index - 80;
-                end else begin
-                    // Increment (right)
-                    screenbuffer_index <= screenbuffer_index + 1;
-                end
+            if ((x == (SCREEN_W - 1)) & ~(y[3:0] == 4'b1111)) begin
+                screenbuffer_index <= screenbuffer_index - (COLS - 1);
+            end else if (x[2:0] == 3'b111) begin
+                screenbuffer_index <= screenbuffer_index + 1;
             end
         end
     end
@@ -146,14 +141,19 @@ module bw_textmode_gpu #(
     reg [7:0] current_char;  // Codepoint
     wire [3:0] char_row = y[3:0];  // 0-15
     wire [2:0] char_col = x[2:0];  // 0-7
-    wire [7:0] current_char_bitmap;
 
-    assign video = (~blanking) & current_char_bitmap[char_col];
+    assign video = (~blanking) & current_char_bitmap[7-char_col];
 
     reg [31:0] char_reg;
+
+    wire [31:0] sb_prefetch_idx = (x == LINE) ? (screenbuffer_index[11:2]) : (screenbuffer_index[11:2]+1);
     always @(posedge clk_pix) begin
-        char_reg <= screenbuffer[screenbuffer_index[9:0]];
+        if ((x == LINE) || (x[4:0] == 5'b11111)) begin
+            // Prefetch next character
+            char_reg <= screenbuffer[sb_prefetch_idx];
+        end
     end
+
     // Demux screenbuffer words
     always_comb begin
         case (screenbuffer_index[1:0])
@@ -164,9 +164,6 @@ module bw_textmode_gpu #(
             default: current_char = 0;
         endcase
     end
-
-
-
 
     // BUS ACCESS of SCREENBUFFER!
     wire [31:0] local_addr = addr - SCREENBUFFER_BASE_ADDR;

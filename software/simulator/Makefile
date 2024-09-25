@@ -11,7 +11,8 @@ build/sim_emulator: build src/sim_emulator.c build/rv32i_simulator.o build/font.
 #	gcc -O5 build/sim_cli.o build/rv32i_simulator.o -o ./build/sim_cli
 
 build/font.bin: build 
-	$(FONTCONVERTER) -f raw $(FONTFILE) build/font.bin
+#	$(FONTCONVERTER) -f raw $(FONTFILE) build/font.bin
+	echo "eee"
 
 build/sim_cli: build build/sim_cli.o build/rv32i_simulator.o
 	gcc -O5 build/sim_cli.o build/rv32i_simulator.o -o ./build/sim_cli

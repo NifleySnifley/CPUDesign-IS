@@ -17,6 +17,7 @@ module vga_pll (
 );
 
 `ifndef IVERILOG_LINT
+
     SB_PLL40_CORE #(
         .FEEDBACK_PATH("SIMPLE"),
         .DIVR(4'b0000),  // DIVR =  0
@@ -30,6 +31,10 @@ module vga_pll (
         .REFERENCECLK(clock_in),
         .PLLOUTCORE(clock_out)
     );
+
+    // assign locked = 1'b1;
+    // assign clock_out = clock_in;
+
 `endif
 
 endmodule

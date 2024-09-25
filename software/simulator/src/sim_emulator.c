@@ -21,13 +21,13 @@
 #define FONT_WIDTH 8
 #define SCREEN_ROWS (SCREEN_HEIGHT/FONT_HEIGHT)
 #define SCREEN_COLS (SCREEN_WIDTH/FONT_WIDTH)
-#define SCREENBUFFER_BASE_ADDR 0x8000
+#define SCREENBUFFER_BASE_ADDR 0x10000
 #define SCREENBUFFER_SIZE_B (SCREEN_ROWS*SCREEN_COLS)
-#define FONTRAM_BASE_ADDR 0x10000
+#define FONTRAM_BASE_ADDR 0x20000
 #define FONTRAM_SIZE_B (256*16)
 #define FONTRAM_INITFILE "build/font.bin"
 
-#define VGA_SCALE 1
+#define VGA_SCALE 2
 
 static volatile bool EXIT = false;
 static bool enable_leds = false;
