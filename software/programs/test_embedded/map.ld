@@ -17,7 +17,7 @@ SECTIONS
     .data : ALIGN(4) { *(.data*) } > ram
     .rodata : ALIGN(4) { *(.rodata*) } > ram
 
-    STACK_SIZE = 0x1000;
+    STACK_SIZE = 0x800;
     .stack (NOLOAD) : ALIGN(4)
     {
         . = ALIGN(4);
@@ -27,5 +27,10 @@ SECTIONS
         _stack = .;
     } > ram
 
-    .bss : ALIGN(4) { *(.bss*) } > ram
+    .bss : ALIGN(4) 
+    { 
+        _bss_start = .;
+        *(.bss*) 
+        _bss_end = .;
+    } > ram
 }

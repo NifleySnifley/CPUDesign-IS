@@ -25,7 +25,6 @@
 #define SCREENBUFFER_SIZE_B (SCREEN_ROWS*SCREEN_COLS)
 #define FONTRAM_BASE_ADDR 0x20000
 #define FONTRAM_SIZE_B (256*16)
-#define FONTRAM_INITFILE "build/font.bin"
 
 #define VGA_SCALE 2
 
@@ -33,6 +32,7 @@ static volatile bool EXIT = false;
 static bool enable_leds = false;
 static bool enable_vga = false;
 static bool enable_buttons = false;
+const char* fontfile = "build/font.bin";
 
 void set_pixel(SDL_Surface* surface, int x, int y, Uint32 pixel) {
 	uint32_t* const target_pixel = (uint32_t*)((uint8_t*)surface->pixels
@@ -188,7 +188,7 @@ int main(int argc, char** argv) {
 	signal(SIGINT, signal_handler);
 
 	int opt;
-	while ((opt = getopt(argc, argv, "lvb")) != -1) {
+	while ((opt = getopt(argc, argv, "lvbf:")) != -1) {
 		switch (opt) {
 			case 'l':
 				enable_leds = true;
@@ -198,6 +198,9 @@ int main(int argc, char** argv) {
 				break;
 			case 'b':
 				enable_buttons = true;
+				break;
+			case 'f':
+				fontfile = optarg;
 				break;
 			default:
 				fprintf(stderr, "Usage: %s [-v (vga gui) ] [-l (led matrix gui) ] [-b (buttons gui) ] program.bin \n",
@@ -222,7 +225,7 @@ int main(int argc, char** argv) {
 	int nmem = rv_simulator_load_memory_from_file(&sim, program_filename, FILETYPE_AUTO, 0);
 	printf("Loaded %d bytes into main memory\n", nmem);
 
-	nmem = rv_simulator_load_memory_from_file(&sim, FONTRAM_INITFILE, FILETYPE_AUTO, FONTRAM_BASE_ADDR);
+	nmem = rv_simulator_load_memory_from_file(&sim, fontfile, FILETYPE_AUTO, FONTRAM_BASE_ADDR);
 	printf("Loaded %d bytes into font RAM\n", nmem);
 
 	pthread_t sdl_thread_handle;
