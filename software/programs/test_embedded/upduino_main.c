@@ -14,8 +14,12 @@ int main() {
 
 	// puts("Hello World!");
 
-	print("Hello World\n");
-	print("TEST :)\n");
+	print("Hello World :)\n");
+
+	stdout_row = 15;
+	for (int c = 0; c < 256;++c) {
+		printchar(c != '\r' && c != '\n' ? c : ' ');
+	}
 
 	int i = 0;
 	while (1) {

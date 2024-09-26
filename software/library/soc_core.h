@@ -17,4 +17,5 @@ extern int stdout_col;
 
 void delay_ms(uint32_t ms);
 
+void printchar(char c);
 int print(char* data);

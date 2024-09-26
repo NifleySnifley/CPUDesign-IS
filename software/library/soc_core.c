@@ -24,28 +24,31 @@ void* _sbrk(int incr) {
 int stdout_row = 0;
 int stdout_col = 0;
 
+void printchar(char c) {
+	int stdout_idx = stdout_row * SCREENBUFFER_COLS + stdout_col;
+
+	if (c == '\r') {
+		stdout_col = 0; // Start of line
+	} else if (c == '\n') {
+		stdout_col = 0; // Start of line
+		stdout_row = (stdout_row + 1) % SCREENBUFFER_ROWS;
+	} else {
+		SCREENBUFFER_B[stdout_idx] = c;
+		stdout_col++;
+	}
+
+	if (stdout_col >= SCREENBUFFER_COLS) {
+		stdout_col = 0;
+		stdout_row = (stdout_row + 1) % SCREENBUFFER_ROWS;
+	}
+}
+
 int print(char* data) {
 	int size = strlen(data);
 
 	// Tread all handles as STDOUT
 	for (int count = 0; count < size; count++) {
-		int stdout_idx = stdout_row * SCREENBUFFER_COLS + stdout_col;
-		char c = data[count];
-
-		if (c == '\r') {
-			stdout_col = 0; // Start of line
-		} else if (c == '\n') {
-			stdout_col = 0; // Start of line
-			stdout_row = (stdout_row + 1) % SCREENBUFFER_ROWS;
-		} else {
-			SCREENBUFFER_B[stdout_idx] = c;
-			stdout_col++;
-		}
-
-		if (stdout_col >= SCREENBUFFER_COLS) {
-			stdout_col = 0;
-			stdout_row = (stdout_row + 1) % SCREENBUFFER_ROWS;
-		}
+		printchar(data[count]);
 	}
 
 	return size;
