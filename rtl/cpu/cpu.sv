@@ -99,7 +99,7 @@ module cpu (
     wire [31:0] alu_out;
 
     // TODO: Add all wires and fix intellisense????
-    alu _alu (
+    alu alu0 (
         .in1(alu_op1),
         .in2(alu_op2),
         .is_imm(~ALU_is_register),

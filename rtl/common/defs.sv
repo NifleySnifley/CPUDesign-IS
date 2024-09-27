@@ -31,7 +31,6 @@ parameter OC_85bP_0 = 5'b11111;
 
 // ALU Functions
 parameter FUNCT3_ADD_SUB = 3'h0;
-parameter FUNCT7_SUB = 7'h20;
 
 parameter FUNCT3_XOR = 3'h4;
 parameter FUNCT3_OR = 3'h6;
@@ -42,3 +41,8 @@ parameter FUNCT7_SRA = 7'h20;
 
 parameter FUNCT3_SLT = 3'h2;
 parameter FUNCT3_SLTU = 3'h3;
+
+
+parameter FUNCT7_SUB = 7'h20;
+parameter FUNCT7_I = 7'h00;
+parameter FUNCT7_M = 7'h01;

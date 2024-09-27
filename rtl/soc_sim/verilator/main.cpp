@@ -20,7 +20,7 @@ extern "C" {
 #define EXIT_ERROR 1
 #define EXIT_FAIL 2
 #define RESET_TIME 11
-#define OPTS "t:vqdnl:r:eb:is"
+#define OPTS "t:vqdnl:r:eb:ism"
 vluint64_t sim_time = 0;
 
 vluint64_t instructions_executed;
@@ -31,6 +31,7 @@ bool dump;
 bool stats;
 bool no_exit_on_fail;
 bool independent;
+bool spram;
 
 // TODO: b+args
 bool exit_on_bkpt;
@@ -55,19 +56,29 @@ bool simulator_equals_dut(Vsoc_sim* dut, rv_simulator_t* sim) {
     };
     for (int r = 0; r < 32; ++r) {
         if (sim->x[r] != dut->rootp->soc_sim__DOT__core0__DOT__registers[r]) {
-            printf("Mismatch of register %d: sim=%u, dut=%u\n", r, sim->x[r], (uint32_t)dut->rootp->soc_sim__DOT__core0__DOT__registers[r]);
+            printf("Mismatch of register %d: sim=%u/%d(s), dut=%u/%d(s)\n", r, sim->x[r], sim->x[r], (uint32_t)dut->rootp->soc_sim__DOT__core0__DOT__registers[r], (int32_t)dut->rootp->soc_sim__DOT__core0__DOT__registers[r]);
             return false;
         }
     }
 
     // TODO: Move to segmented memory model
     rv_simulator_segmented_memory_segment_t* main_memory = rv_simulator_segmented_memory_get_segment((rv_simulator_segmented_memory_t*)sim->memory_interface.memory, 0);
-    rv_simulator_segmented_memory_segment_t* spram = rv_simulator_segmented_memory_get_segment((rv_simulator_segmented_memory_t*)sim->memory_interface.memory, 1);
 
     for (int wa = 0; wa < main_memory->size / 4; ++wa) {
         if (simulator_read_word(sim, wa * 4 + main_memory->start_address) != dut->rootp->soc_sim__DOT__mem__DOT__memory[wa]) {
-            printf("Mismatch of memory word @ %x: sim=%u, dut=%u\n", wa * 4, simulator_read_word(sim, wa * 4 + main_memory->start_address), dut->rootp->soc_sim__DOT__mem__DOT__memory[wa]);
+            printf("Mismatch of Main Memory word @ %x: sim=%u, dut=%u\n", wa * 4, simulator_read_word(sim, wa * 4 + main_memory->start_address), dut->rootp->soc_sim__DOT__mem__DOT__memory[wa]);
             return false;
+        }
+    }
+
+    if (spram) {
+        rv_simulator_segmented_memory_segment_t* spram = rv_simulator_segmented_memory_get_segment((rv_simulator_segmented_memory_t*)sim->memory_interface.memory, 1);
+        for (int wa = 0; wa < spram->size / 4; ++wa) {
+            uint32_t spramword = simulator_read_word(sim, wa * 4 + spram->start_address);
+            if (spramword != dut->rootp->soc_sim__DOT__spram__DOT__memory[wa]) {
+                printf("Mismatch of SPRAM word @ %x: sim=%u, dut=%u\n", wa * 4, spramword, dut->rootp->soc_sim__DOT__spram__DOT__memory[wa]);
+                return false;
+            }
         }
     }
 
@@ -111,6 +122,9 @@ int main(int argc, char** argv, char** env) {
         switch (opt) {
             case 't':
                 tracefile = optarg;
+                break;
+            case 'm':
+                spram = true;
                 break;
             case 'v':
                 verbose = true;
@@ -184,7 +198,7 @@ int main(int argc, char** argv, char** env) {
     rv_simulator_init(&simulator);
     rv_simulator_segmented_memory_t* sim_mem = rv_simulator_init_segmented_memory(&simulator);
     rv_simulator_segmented_memory_add_segment(sim_mem, 0, memsize_words * 4, "BRAM", false);
-    rv_simulator_segmented_memory_add_segment(sim_mem, spram_baseaddr, spram_words * 4, "SPRAM", false);
+    if (spram) rv_simulator_segmented_memory_add_segment(sim_mem, spram_baseaddr, spram_words * 4, "SPRAM", false);
 
     // simulator.instr_trace = sim_tracefn;
     // TODO: Ceiling divide here!
@@ -195,18 +209,11 @@ int main(int argc, char** argv, char** env) {
         exit(EXIT_ERROR);
     }
 
-    for (int i = 0; i < spram_words * 4; ++i) {
-        rv_simulator_write_byte(&simulator, spram_baseaddr + i, 0xAA);
-    }
-
     // Copy initialization memory from sim to DUT
     for (int i = 0; i < memsize_words; ++i) {
         uint32_t word = simulator_read_word(&simulator, i * 4);
         dut->rootp->soc_sim__DOT__mem__DOT__memory[i] = word;
     }
-
-    // printf("SIM memory initial:\n");
-    // rv_simulator_pprint_memory(&simulator);
 
     // Reset DUT
     while (sim_time < RESET_TIME) {

@@ -174,6 +174,24 @@ int rv_simulator_step(rv_simulator_t* sim) {
                     return 2;
                 }
                 break;
+            case 0x01:
+                if (funct3 == 0x0) {
+                    TRACE_INSTR(sim, "MUL");
+                    int64_t result = ((int32_t)R(rs1)) * ((int32_t)R(rs2));
+                    RSET(rd, (uint32_t)(result & 0xFFFFFFFF));
+                } else if (funct3 == 0x1) {
+                    TRACE_INSTR(sim, "MULH");
+                    int64_t result = (int64_t)((int32_t)R(rs1)) * (int64_t)((int32_t)R(rs2));
+                    RSET(rd, (uint32_t)((result >> 32) & 0xFFFFFFFF));
+                } else if (funct3 == 0x2) {
+                    TRACE_INSTR(sim, "MULSU");
+                    int64_t result = (int64_t)((int32_t)R(rs1)) * (uint64_t)((uint32_t)R(rs2));
+                    RSET(rd, (uint32_t)((result >> 32) & 0xFFFFFFFF));
+                } else if (funct3 == 0x3) {
+                    TRACE_INSTR(sim, "MULU");
+                    uint64_t result = ((uint64_t)R(rs1)) * ((uint64_t)R(rs2));
+                    RSET(rd, (uint32_t)((result >> 32) & 0xFFFFFFFF));
+                }
         }
         sim->pc += 4;
     } else if (opcode == OC_OP_IMM) {

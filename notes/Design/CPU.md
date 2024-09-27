@@ -98,3 +98,10 @@ wire [31:0] shifter =
 Optimize ALU later?
 - Fancy sub comparison thing
 - Many sub-wires and combinations (get as close to the LUTs as possible)
+
+
+### Adding multiplication extension:
+- https://msyksphinz-self.github.io/riscv-isadoc/html/rvm.html
+	- Good info on the (slightly confusing) specification about signedness
+	- rs1 is signed when: mul, mulh, mulhsu
+	- rs2 is signed when: mul, mulh

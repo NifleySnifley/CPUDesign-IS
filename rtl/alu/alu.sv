@@ -28,16 +28,39 @@ module alu (
     wire [32:0] shl = $signed({shifter_ext & shifter_in[31], shifter_in}) >>> samt;
     wire [31:0] shifter_out = shift_is_left ? {shl[0],shl[1],shl[2],shl[3],shl[4],shl[5],shl[6],shl[7],shl[8],shl[9],shl[10],shl[11],shl[12],shl[13],shl[14],shl[15],shl[16],shl[17],shl[18],shl[19],shl[20],shl[21],shl[22],shl[23],shl[24],shl[25],shl[26],shl[27],shl[28],shl[29],shl[30],shl[31]} : shl[31:0];
 
+    wire mul = onehot_funct3[0];
+    wire mulh = onehot_funct3[1];
+    wire mulhsu = onehot_funct3[2];
+    wire mulhu = onehot_funct3[3];
+
+    wire signed [63:0] mul_out = $signed(
+        {(mul | mulh | mulhsu) & in1[31], $signed(in1)}
+    ) * $signed(
+        {(mul | mulh) & in2[31], $signed(in2)}
+    );  // DSP Multiplier on FPGA
+
     always_comb begin
         unique case (1'b1)
-            onehot_funct3[0]: out = (~is_imm && (funct7 == FUNCT7_SUB) ? (in1 - in2) : (in1 + in2));
+            onehot_funct3[0]: begin
+                if (~is_imm && (funct7 == FUNCT7_SUB)) begin
+                    out = (in1 - in2);
+                end else if (~is_imm && funct7 == FUNCT7_M) begin
+                    out = mul_out[31:0];
+                end else begin  // FUNCT7_I -> MUL
+                    out = (in1 + in2);
+                end
+            end
+            onehot_funct3[1]:
+            out = (~is_imm && (funct7 == FUNCT7_M)) ? mul_out[63:32] : shifter_out;
+            onehot_funct3[2]:
+            out = (~is_imm && (funct7 == FUNCT7_M)) ?
+                mul_out[63:32] : {31'b0, $signed(in1) < $signed(in2)};
+            onehot_funct3[3]:
+            out = (~is_imm && (funct7 == FUNCT7_M)) ? mul_out[63:32] : {31'b0, in1 < in2};
             onehot_funct3[4]: out = in1 ^ in2;
-            onehot_funct3[6]: out = in1 | in2;
+            onehot_funct3[5]: out = shifter_out;
             onehot_funct3[7]: out = in1 & in2;
-            // Both shift functions
-            onehot_funct3[1] | onehot_funct3[5]: out = shifter_out;
-            onehot_funct3[3]: out = {31'b0, in1 < in2};
-            onehot_funct3[2]: out = {31'b0, $signed(in1) < $signed(in2)};
+            onehot_funct3[6]: out = in1 | in2;
             default: out = 32'b0;
         endcase
     end

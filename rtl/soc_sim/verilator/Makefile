@@ -16,4 +16,4 @@ obj_dir/Vsoc_sim: generate
 	$(MAKE) -C obj_dir -f Vsoc_sim.mk Vsoc_sim
 
 generate: main.cpp $(HDL_FILES)
-	verilator -cc -I$(VERILOG_DIR) -I$(VERILOG_DIR)/common --trace --no-trace-params --top soc_sim $(HDL_FILES) --exe main.cpp ../$(SIM_DIR)/build/rv32i_simulator.o
+	verilator -cc -I$(VERILOG_DIR) -I$(VERILOG_DIR)/common --trace-structs --trace-depth 10 --trace --no-trace-params --top soc_sim $(HDL_FILES) --exe main.cpp ../$(SIM_DIR)/build/rv32i_simulator.o

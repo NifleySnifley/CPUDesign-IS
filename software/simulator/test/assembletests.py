@@ -18,7 +18,7 @@ for f in asmfiles:
     OUTELF = BUILDDIR/(fullpath.stem + ".elf")
     OUTBIN = BUILDDIR/(fullpath.stem + ".bin")
     # print(fullpath, OUTELF, OUTBIN)
-    ec = os.system(f"riscv32-unknown-elf-gcc -nostdlib -ffreestanding -T{LINKSCRIPT} {fullpath} -o {OUTELF}")
+    ec = os.system(f"riscv32-unknown-elf-gcc -nostdlib -ffreestanding -march=rv32im -T{LINKSCRIPT} {fullpath} -o {OUTELF}")
     if not ec:
         ec |= os.system(f"riscv32-unknown-elf-objcopy -O binary -g {OUTELF} {OUTBIN}")
     if (ec):

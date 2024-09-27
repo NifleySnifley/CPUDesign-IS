@@ -85,10 +85,7 @@ module soc_sim #(
     wire spram_done;
     wire spram_active;
 
-    // assign gpio_45 = spram_ren;
-    // assign gpio_47 = spram_done;
-
-    ice40_spram spram (
+    sim_spram spram (
         .clk,
         .addr(spram_addr),
         .wdata(spram_wdata),
