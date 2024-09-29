@@ -97,6 +97,8 @@ module cpu (
     wire [31:0] alu_op1 = rs1_value;
     wire [31:0] alu_op2 = ALU_is_register ? rs2_value : imm_i;
     wire [31:0] alu_out;
+    wire alu_done;
+    reg alu_ready;
 
     // TODO: Add all wires and fix intellisense????
     alu alu0 (
@@ -104,10 +106,12 @@ module cpu (
         .in2(alu_op2),
         .is_imm(~ALU_is_register),
         .out(alu_out),
+        .ready(alu_ready),
         .clk,
         .rst,
         .funct3,
-        .funct7
+        .funct7,
+        .done(alu_done)
     );
 
     reg [31:0] rs1_value;
@@ -161,7 +165,8 @@ module cpu (
                             (loadstore_size_onehot[1] ? ({load_signext ? {16{load_half[15]}}:16'b0, load_half}) : 32'b0) |
                             (loadstore_size_onehot[2] ? bus_rdata : 32'b0);
 
-    wire inst_is_exec = inst_is_ALU || inst_is_load || inst_is_store;  // TODO: So far ALU, add memory operations and system instructions
+    // TODO: Allow combinatorial ALU ops to skip execute phase (inst_is_ALU && ~alu_ready && alu_combinatorial)
+    wire inst_is_exec = (inst_is_ALU) || inst_is_load || inst_is_store;  // TODO: So far ALU, add memory operations and system instructions
 
     wire inst_has_writeback = ~(inst_is_branch || inst_is_store);
     // reg [31:0] writeback_value;
@@ -171,7 +176,7 @@ module cpu (
         (inst_is_ALU ? alu_out : 32'b0) | 
         (inst_is_load ? load_value : 32'b0);
 
-    wire exec_done = inst_is_ALU || ((inst_is_load || inst_is_store) && bus_done);
+    wire exec_done = (inst_is_ALU && alu_done) || ((inst_is_load || inst_is_store) && bus_done);
 
     always @(posedge clk) begin
         if (rst) begin
@@ -194,13 +199,16 @@ module cpu (
                     rs2_value <= registers[rs2];
 
                     state <= inst_is_exec ? STATE_EXEC : STATE_WRITEBACK;
+                    alu_ready <= 1'b1;
                 end
                 state[STATE_EXEC_IDX]: begin
                     // Only for ALU, mem, etc.
+                    alu_ready <= 1'b0;
                     if (exec_done) state <= STATE_WRITEBACK;
                 end
                 state[STATE_WRITEBACK_IDX]: begin
                     pc <= jumping ? pc_next : pc_advanced;
+                    alu_ready <= 1'b0;
 
                     if (inst_has_writeback && (|rd)) begin
                         registers[rd] <= writeback_value;

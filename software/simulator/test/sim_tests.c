@@ -86,6 +86,14 @@ INSTR_TEST(sub);
 INSTR_TEST(sw);
 INSTR_TEST(xori);
 INSTR_TEST(xor);
+INSTR_TEST(mul);
+INSTR_TEST(mulh);
+INSTR_TEST(mulhu);
+INSTR_TEST(mulhsu);
+INSTR_TEST(rem);
+INSTR_TEST(remu);
+INSTR_TEST(div);
+INSTR_TEST(divu);
 
 Suite* test_suite(void) {
     Suite* s;
@@ -133,6 +141,14 @@ Suite* test_suite(void) {
     tcase_add_test(tc_instr, test_sw);
     tcase_add_test(tc_instr, test_xori);
     tcase_add_test(tc_instr, test_xor);
+    tcase_add_test(tc_instr, test_mul);
+    tcase_add_test(tc_instr, test_mulh);
+    tcase_add_test(tc_instr, test_mulhu);
+    tcase_add_test(tc_instr, test_mulhsu);
+    tcase_add_test(tc_instr, test_rem);
+    tcase_add_test(tc_instr, test_remu);
+    tcase_add_test(tc_instr, test_div);
+    tcase_add_test(tc_instr, test_divu);
 
     suite_add_tcase(s, tc_instr);
 

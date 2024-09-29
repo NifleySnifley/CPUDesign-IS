@@ -15,13 +15,13 @@ build/font.bin: build
 	echo "eee"
 
 build/sim_cli: build build/sim_cli.o build/rv32i_simulator.o
-	gcc -O5 build/sim_cli.o build/rv32i_simulator.o -o ./build/sim_cli
+	gcc -O5 -g build/sim_cli.o build/rv32i_simulator.o -o ./build/sim_cli
 
 build/sim_cli.o: build src/sim_cli.c
-	gcc -O5 -Isrc -c src/sim_cli.c -o build/sim_cli.o
+	gcc -O5 -g -Isrc -c src/sim_cli.c -o build/sim_cli.o
 
 build/rv32i_simulator.o: build src/rv32i_simulator.c src/rv32i_simulator.h
-	gcc -O5 -Isrc -c src/rv32i_simulator.c -o build/rv32i_simulator.o
+	gcc -g -O5 -Isrc -c src/rv32i_simulator.c -o build/rv32i_simulator.o
 
 test: build/rv32i_simulator.o
 	$(MAKE) -C test

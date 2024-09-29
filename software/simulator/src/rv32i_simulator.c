@@ -191,6 +191,20 @@ int rv_simulator_step(rv_simulator_t* sim) {
                     TRACE_INSTR(sim, "MULU");
                     uint64_t result = ((uint64_t)R(rs1)) * ((uint64_t)R(rs2));
                     RSET(rd, (uint32_t)((result >> 32) & 0xFFFFFFFF));
+                } else if (funct3 == 0x4) {
+                    TRACE_INSTR(sim, "DIV");
+                    int64_t res = R(rs2) == 0 ? 0xFFFFFFFF : ((int64_t)(int32_t)R(rs1)) / ((int64_t)(int32_t)R(rs2));
+                    RSET(rd, res & 0xFFFFFFFF);
+                } else if (funct3 == 0x5) {
+                    TRACE_INSTR(sim, "DIVU");
+                    RSET(rd, R(rs2) == 0 ? 0xFFFFFFFF : (uint32_t)((uint32_t)R(rs1) / (uint32_t)R(rs2)));
+                } else if (funct3 == 0x6) {
+                    TRACE_INSTR(sim, "REM");
+                    int64_t res = R(rs2) == 0 ? R(rs1) : ((int64_t)(int32_t)R(rs1)) % ((int64_t)(int32_t)R(rs2));
+                    RSET(rd, res & 0xFFFFFFFF);
+                } else if (funct3 == 0x7) {
+                    TRACE_INSTR(sim, "REMU");
+                    RSET(rd, R(rs2) == 0 ? R(rs1) : (uint32_t)((uint32_t)R(rs1) % (uint32_t)R(rs2)));
                 }
         }
         sim->pc += 4;
