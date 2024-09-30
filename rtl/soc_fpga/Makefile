@@ -26,7 +26,7 @@ $(BUILDDIR)/$(PROJNAME)_base.asc: $(BUILDDIR) $(BUILDDIR)/$(PROJNAME).json ./$(P
 	nextpnr-ice40 $(PNR_ARGS)
 
 $(BUILDDIR)/$(PROJNAME).json: $(BUILDDIR) $(SRCFILES) $(BUILDDIR)/phony.hex
-	yosys -q -p "read_verilog -I./ -I$(COMMONDIR) -I../gpu/rtl -sv $(SRCFILES); synth_ice40 -top $(TOPNAME) -json $(BUILDDIR)/$(PROJNAME).json" 
+	yosys -q -p "read_verilog -I./ -I$(COMMONDIR) -I../gpu/rtl -sv $(SRCFILES); synth_ice40 -dsp -top $(TOPNAME) -json $(BUILDDIR)/$(PROJNAME).json" 
 
 $(BUILDDIR)/phony.hex: $(BUILDDIR)
 	icebram -g 32 $(MEMSIZE) > $(BUILDDIR)/phony.hex

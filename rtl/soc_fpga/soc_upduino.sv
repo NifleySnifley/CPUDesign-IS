@@ -13,7 +13,7 @@
 `endif
 
 module soc_upduino #(
-    parameter MEMSIZE = 2048
+    parameter MEMSIZE = 2560
 ) (
     output wire led_green,
     output wire led_red,
