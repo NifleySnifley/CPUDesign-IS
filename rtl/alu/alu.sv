@@ -45,33 +45,46 @@ module alu (
 
     //////////////////////////////////////// DIVIDER ////////////////////////////////////////
     wire is_division = is_m_extension && (|onehot_funct3[7:4]);
-    // Extra wide to simplify shifting logic
-    reg [63:0] dividend;
-    reg [63:0] divisor;
+    wire is_division_signed = (onehot_funct3[4] | onehot_funct3[6]);
+    reg [63:0] divisor = 0;
+    reg [31:0] remainder = 0; // FIXME: Made a reckless optimization of squishing remainder into 32 bits not 64, should be good and passes tests but need to verify
     reg [31:0] quotient;
-    wire [31:0] remainder = dividend[31:0];
-    reg [5:0] div_bit = 0;
-    wire division_busy = |div_bit;
-    wire [63:0] next_dividend = dividend - divisor;
+    reg [5:0] bitctr = 0;
+
+    wire negative_dividend = in1[31] & is_division_signed;
+    wire negative_divisor = in2[31] & is_division_signed;
 
     always @(posedge clk) begin
         if (is_division) begin
-            if (ready) begin
-                div_bit <= 6'd31;
-                $display("%d, %d\n", in1, in2);
-                dividend <= {32'b0, in1};  // TODO: Sign extend?
-                divisor  <= {1'b0, in2, 31'b0};  // TODO: Sign extend?
-                quotient <= 0;
+            if (division_done) begin
+                if (ready) begin
+                    // $display("Starting %d/%d", in1, in2);
+                    // Absolute value of all operands
+                    remainder <= negative_dividend ? -in1 : in1;
+                    divisor <= {1'b0, negative_divisor ? -in2 : in2, 31'b0};
+                    quotient <= 0;
+                    bitctr <= 32;
+                end
             end else begin
-                quotient <= {quotient[30:0], ~next_dividend[63]};
-                divisor  <= divisor >> 1;  //
-                if (~next_dividend[63]) dividend <= next_dividend;
-                div_bit <= div_bit - 1;
+                remainder <= (divisor <= {32'b0,remainder}) ? (remainder - divisor[31:0]) : remainder;
+                quotient <= {quotient[30:0], (divisor <= {32'b0, remainder})};
+                divisor <= divisor >> 1;
+                bitctr <= bitctr - 1;
             end
         end
     end
 
-    assign done = is_division ? ~division_busy : 1'b1;
+    wire [31:0] remainder_out = negative_dividend ? -remainder[31:0] : remainder[31:0];
+    wire [31:0] quotient_out = (negative_dividend ^ negative_divisor) & (|in2) ? -quotient : quotient;
+
+    wire division_done = bitctr == 0;
+    reg division_done_latch = 1;
+    wire division_done_posedge = division_done & ~division_done_latch;
+    always @(posedge clk) begin
+        division_done_latch <= division_done;
+    end
+
+    assign done = is_division ? division_done_posedge : 1'b1;
 
     always_comb begin
         unique case (1'b1)
@@ -88,10 +101,10 @@ module alu (
             onehot_funct3[2]:
             out = (is_m_extension) ? mul_out[63:32] : {31'b0, $signed(in1) < $signed(in2)};
             onehot_funct3[3]: out = (is_m_extension) ? mul_out[63:32] : {31'b0, in1 < in2};
-            onehot_funct3[4]: out = is_m_extension ? quotient : (in1 ^ in2);
-            onehot_funct3[5]: out = is_m_extension ? quotient : shifter_out;
-            onehot_funct3[7]: out = is_m_extension ? remainder : (in1 & in2);
-            onehot_funct3[6]: out = is_m_extension ? remainder : (in1 | in2);
+            onehot_funct3[4]: out = is_m_extension ? quotient_out : (in1 ^ in2);
+            onehot_funct3[5]: out = is_m_extension ? quotient_out : shifter_out;
+            onehot_funct3[7]: out = is_m_extension ? remainder_out : (in1 & in2);
+            onehot_funct3[6]: out = is_m_extension ? remainder_out : (in1 | in2);
             default: out = 32'b0;
         endcase
     end

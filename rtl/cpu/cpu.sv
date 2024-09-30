@@ -165,8 +165,8 @@ module cpu (
                             (loadstore_size_onehot[1] ? ({load_signext ? {16{load_half[15]}}:16'b0, load_half}) : 32'b0) |
                             (loadstore_size_onehot[2] ? bus_rdata : 32'b0);
 
-    // TODO: Allow combinatorial ALU ops to skip execute phase (inst_is_ALU && ~alu_ready && alu_combinatorial)
-    wire inst_is_exec = (inst_is_ALU) || inst_is_load || inst_is_store;  // TODO: So far ALU, add memory operations and system instructions
+    // DONE: Allow combinatorial ALU ops to skip execute phase (inst_is_ALU && ~alu_ready && alu_combinatorial)
+    wire inst_is_exec = (inst_is_ALU && ~alu_ready) || inst_is_load || inst_is_store;  // TODO: So far ALU, add memory operations and system instructions
 
     wire inst_has_writeback = ~(inst_is_branch || inst_is_store);
     // reg [31:0] writeback_value;
