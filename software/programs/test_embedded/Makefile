@@ -12,7 +12,7 @@ sim: build/icefun_main.hex
 
 .PHONY: build/graphics_test.hex
 build/graphics_test.hex: graphics_test.c
-	$(COMPILE) -Tmap.ld graphics_test.c -o build/graphics_test.elf
+	$(COMPILE) -Tmap_upduino.ld graphics_test.c -o build/graphics_test.elf
 	$(OBJCOPY) build/graphics_test.elf --hex -o build/graphics_test.hex
 
 .PHONY: build/icefun_main.hex
@@ -22,7 +22,7 @@ build/icefun_main.hex: icefun_main.c build
 	
 .PHONY: build/upduino_main.hex
 build/upduino_main.hex: upduino_main.c build
-	$(COMPILE) -Tmap_spram.ld upduino_main.c -o build/upduino_main.elf
+	$(COMPILE) -Tmap_upduino.ld upduino_main.c -o build/upduino_main.elf
 	$(OBJCOPY) build/upduino_main.elf --hex -o build/upduino_main.hex
 
 build:

@@ -54,7 +54,10 @@ int print(char* data) {
 	return size;
 }
 
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
 void delay_ms(uint32_t ms) {
 	register uint32_t cyc_delay = ms * CYC_PER_MS;
 	while (cyc_delay > 0) --cyc_delay;
 }
+#pragma GCC pop_options

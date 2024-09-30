@@ -1,5 +1,5 @@
 STACK_SIZE = DEFINED(__stack_size__) ? __stack_size__ : 0x0800;
-BRAM_SIZE = 0x2000;
+BRAM_SIZE = 0x2800;
 SPRAM_SIZE = 0x20000;
 
 ENTRY(_start)
@@ -60,9 +60,11 @@ SECTIONS
     {
         . = ALIGN(4);
         _bss_start = .;
-        *(.bss .bss.*)
+        *(.bss)
+        *(.bss.*)
+        *(.sbss)
+        *(.sbss.*)
         *(COMMON)
-        . = ALIGN(4);
         _bss_end = .;
     } > spram
 
@@ -75,11 +77,11 @@ SECTIONS
         _stack = .;
     } > spram
 
-    .heap : ALIGN(4)
+    .heap (NOLOAD) : ALIGN(4)
     {   
         . = ALIGN(4);
         PROVIDE (_heap_start = .);
         _end = . ;
-    }
+    } > spram
 
 }

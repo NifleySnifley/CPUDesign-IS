@@ -5,14 +5,13 @@ _start:
 	la       sp, _stack
 
 	//       Zero out all of BSS
-	la       x26, _bss_start
-	la       x27, _bss_end
-	bge      x26, x27, zend
+	la       s10, _bss_start
+	la       s11, _bss_end
+# bgeu x26, x27, zend
 zloop:
-	sw       x0, 0(x26)
-	addi     x26, x26, 4
-	ble      x26, x27, zloop
-zend:
+	sw       x0, 0(s10)
+	addi     s10, s10, 4
+	ble      s10, s11, zloop
 
 	//       Do libc init stuff
 	call     __libc_init_array
