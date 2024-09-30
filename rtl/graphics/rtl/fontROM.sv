@@ -13,7 +13,7 @@ module fontROM #(
     // Read clock (ASYNC=0)
     input clk,
     // Output row of the character bitmap
-    output reg [FONT_WIDTH-1:0] bitmap_row
+    output [FONT_WIDTH-1:0] bitmap_row
 );
     reg [FONT_WIDTH-1:0] ROM[(N_CHARS*FONT_HEIGHT)-1:0];
 
