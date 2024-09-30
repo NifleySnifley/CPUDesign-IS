@@ -141,7 +141,7 @@ void* sdl_window_thread_fn(void* arg) {
 				int col = idx % SCREEN_COLS;
 
 				uint8_t ch = rv_simulator_read_byte(sim, SCREENBUFFER_BASE_ADDR + idx);
-				if (ch == 0) continue;
+				// if (ch == 0) continue;
 
 				for (int r = 0; r < FONT_HEIGHT; ++r) {
 					uint8_t rowbin = rv_simulator_read_byte(sim, FONTRAM_BASE_ADDR + FONT_HEIGHT * ch + r);
@@ -240,6 +240,8 @@ int main(int argc, char** argv) {
 	gettimeofday(&tv, NULL);
 	uint64_t last_micros = 1000000 * tv.tv_sec + tv.tv_usec;
 
+	// int debug_array[40][30] = { 0 };
+
 	while (!EXIT) {
 		int status = rv_simulator_step(&sim);
 		instruction++;
@@ -259,7 +261,7 @@ int main(int argc, char** argv) {
 			);
 		}
 
-		if (status < 0) {
+		if (status == -1) {
 			printf("Breakpoint @ PC=%x\n", sim.pc);
 
 			printf("Press 'c' key to continue, 'r' to print registers, 'm' to print memory, ctrl-C + return to exit.\n");
@@ -273,10 +275,22 @@ int main(int argc, char** argv) {
 					case 'r':
 						rv_simulator_pprint_registers(&sim);
 						break;
+						// case 'd':
+						// 	for (int y = 0; y < 30; ++y) {
+						// 		for (int x = 0; x < 40; ++x) {
+						// 			printf("%d", debug_array[x][y]);
+						// 		}
+						// 		printf("\n");
+						// 	}
 					default:
 						break;
 				}
 			}
+		} else if (status == -2) {
+			// Ecall
+
+			// debug_array[sim.x[29]][sim.x[30]] = sim.x[31];
+			// printf("Debug: %d, %d, %d\n", sim.x[29], sim.x[30], sim.x[31]);
 		}
 	}
 

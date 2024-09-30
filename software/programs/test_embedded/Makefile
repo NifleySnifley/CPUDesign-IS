@@ -27,7 +27,7 @@ build/upduino_main.hex: upduino_main.c build
 
 .PHONY: build/cgol.hex
 build/cgol.hex: cgol.c build
-	$(COMPILE) -T$(LIBDIR)/map_spram.ld cgol.c -o build/cgol.elf
+	$(COMPILE) -O5 -T$(LIBDIR)/map_spram.ld cgol.c -o build/cgol.elf
 	$(OBJCOPY) build/cgol.elf --hex -o build/cgol.hex
 
 build:
