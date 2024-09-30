@@ -593,13 +593,13 @@ int rv_simulator_load_memory_from_file(rv_simulator_t* sim, const char* filename
         char* suffix = &filename[namelen - 3];
         // BIN files are RAW! remember!
         if (strcmp(suffix, "txt") == 0) {
-            printf("Detected input file format to be binary-text\n");
+            if (RV_SIM_VERBOSE) printf("Detected input file format to be binary-text\n");
             type = FILETYPE_BINTXT;
         } else if (strcmp(suffix, "hex") == 0) {
-            printf("Detected input file format to be hex\n");
+            if (RV_SIM_VERBOSE) printf("Detected input file format to be hex\n");
             type = FILETYPE_HEXTXT;
         } else {
-            printf("Could not detect input file format, treating as binary\n");
+            if (RV_SIM_VERBOSE) printf("Could not detect input file format, treating as binary\n");
             type = FILETYPE_RAW;
         }
     }

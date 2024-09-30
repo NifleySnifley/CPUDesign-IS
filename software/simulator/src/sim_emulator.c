@@ -26,7 +26,7 @@
 #define FONTRAM_BASE_ADDR 0x20000
 #define FONTRAM_SIZE_B (256*16)
 
-#define VGA_SCALE 2
+#define VGA_SCALE 1
 
 static volatile bool EXIT = false;
 static bool enable_leds = false;
@@ -216,8 +216,8 @@ int main(int argc, char** argv) {
 	rv_simulator_t sim = { 0 };
 	rv_simulator_init(&sim);
 	rv_simulator_segmented_memory_t* memory = rv_simulator_init_segmented_memory(&sim);
-	rv_simulator_segmented_memory_add_segment(memory, 0, 2048 * 4, "Main Memory", false);
-	rv_simulator_segmented_memory_add_segment(memory, 0xf000, 4, "LED Matrix", false);
+	rv_simulator_segmented_memory_add_segment(memory, 0, 2560 * 4, "Main Memory", false);
+	rv_simulator_segmented_memory_add_segment(memory, 0xf000, 4, "Parallel IO", false);
 	rv_simulator_segmented_memory_add_segment(memory, 0xf0000000, 16384, "SPRAM", false);
 	rv_simulator_segmented_memory_add_segment(memory, SCREENBUFFER_BASE_ADDR, SCREENBUFFER_SIZE_B, "Character Screenbuffer", false);
 	rv_simulator_segmented_memory_add_segment(memory, FONTRAM_BASE_ADDR, FONTRAM_SIZE_B, "Font RAM", false);
