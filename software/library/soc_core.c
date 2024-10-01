@@ -3,6 +3,7 @@
 #include <string.h>
 #include <soc_core.h>
 #include <soc_io.h>
+#include <stdbool.h>
 
 extern int _heap_start;
 
@@ -17,6 +18,9 @@ void* _sbrk(int incr) {
 
 	prev_heap = heap;
 	heap += incr;
+	// print("Sbrk: ");
+	// print_integer((uint32_t)heap % 100000);
+	// print("\n");
 
 	return prev_heap;
 }
@@ -43,15 +47,35 @@ void printchar(char c) {
 	}
 }
 
-int print(char* data) {
-	int size = strlen(data);
-
-	// Tread all handles as STDOUT
-	for (int count = 0; count < size; count++) {
+int printn(char* data, int n) {
+	for (int count = 0; count < n; count++) {
 		printchar(data[count]);
 	}
 
-	return size;
+	return n;
+}
+
+int print(char* data) {
+	return printn(data, strlen(data));
+}
+
+int print_integer(int number) {
+	bool neg = number < 0;
+	if (neg) number *= -1;
+
+	int n = 10;
+	char str[11]; // Assuming 32 bit int
+
+	do {
+		int digit = number % 10;
+		str[n--] = '0' + digit;
+		number /= 10;
+	} while (number > 0);
+
+	if (neg)
+		str[n--] = '-';
+	printn(&str[n + 1], 11 - n);
+	return n;
 }
 
 #pragma GCC push_options

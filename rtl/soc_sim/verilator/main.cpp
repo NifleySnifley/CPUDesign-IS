@@ -192,7 +192,7 @@ int main(int argc, char** argv, char** env) {
     rv_simulator_t simulator;
     constexpr uint32_t memsize_words = (sizeof(dut->rootp->soc_sim__DOT__mem__DOT__memory.m_storage)) / 4;
 
-    constexpr uint32_t spram_baseaddr = 0x00f00000;
+    constexpr uint32_t spram_baseaddr = 0xf0000000;
     constexpr uint32_t spram_words = 32768;
 
     rv_simulator_init(&simulator);

@@ -19,3 +19,5 @@ void delay_ms(uint32_t ms);
 
 void printchar(char c);
 int print(char* data);
+int printn(char* data, int n);
+int print_integer(int number);

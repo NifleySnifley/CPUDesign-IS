@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 #define CELL_COLS (SCREENBUFFER_COLS)
 #define CELL_ROWS (SCREENBUFFER_ROWS*2)
@@ -22,11 +23,11 @@ int cell_i(int X, int Y) {
 
 // Y is 0 at top, increases down
 // X is 0 at left, increases right
-inline bool get_cell(lifemap_t* map, int X, int Y) {
+bool get_cell(lifemap_t* map, int X, int Y) {
 	return map->states[cell_i(X, Y)];
 }
 
-inline void set_cell(lifemap_t* map, int X, int Y, bool state) {
+void set_cell(lifemap_t* map, int X, int Y, bool state) {
 	map->states[cell_i(X, Y)] = state;
 }
 
@@ -43,36 +44,53 @@ int count_neighbors(lifemap_t* map, int X, int Y) {
 }
 
 int main() {
-	register uint32_t dbg_1 asm("x29");
-	register uint32_t dbg_2 asm("x30");
-	register uint32_t dbg_3 asm("x31");
-
 	lifemap_t* current, * next;
-	current = malloc(sizeof(lifemap_t));
-	next = malloc(sizeof(lifemap_t));
+	current = calloc(1, sizeof(lifemap_t));
+	next = calloc(1, sizeof(lifemap_t));
 
-	// Small glider
-	set_cell(current, 10, 4, 1);
-	set_cell(current, 11, 4, 1);
-	set_cell(current, 12, 4, 1);
-	set_cell(current, 12, 3, 1);
-	set_cell(current, 11, 2, 1);
+	// Starting is fun...
+	// set_cell(current, 10, 4, 1);
+	// set_cell(current, 11, 4, 1);
+	// set_cell(current, 12, 4, 1);
+	// set_cell(current, 12, 3, 1);
+	// set_cell(current, 11, 2, 1);
 
-	// Blinker
-	set_cell(current, 20, 21, 1);
-	set_cell(current, 20, 22, 1);
-	set_cell(current, 20, 23, 1);
+	// // Blinker
+	// set_cell(current, 20, 21, 1);
+	// set_cell(current, 20, 22, 1);
+	// set_cell(current, 20, 23, 1);
 
 
-	while (1) {
+	for (int iter = 0; ; ++iter) {
+		stdout_row = SCREENBUFFER_ROWS - 1;
+		stdout_col = 0;
+		print("Step: ");
+		print_integer(iter);
+
 		// Update the screen with current
 		for (int x = 0; x < CELL_COLS; ++x) {
 			for (int y_2 = 0; y_2 < CELL_ROWS / 2; ++y_2) {
+				if (y_2 == (CELL_ROWS / 2 - 1) && x < (stdout_col - 1)) continue;
 				uint8_t high = get_cell(current, x, y_2 * 2);
 				uint8_t low = get_cell(current, x, y_2 * 2 + 1);
 				SCREENBUFFER_B[x + y_2 * SCREENBUFFER_COLS] = (high | (low << 1));
 			}
 		}
+
+		PARALLEL_IO_B[0] = 0x55;
+		// asm("ebreak");
+
+		// HOLDING IS MORE FUN!!!
+		set_cell(current, 10, 4, 1);
+		set_cell(current, 11, 4, 1);
+		set_cell(current, 12, 4, 1);
+		set_cell(current, 12, 3, 1);
+		set_cell(current, 11, 2, 1);
+
+		// Blinker
+		set_cell(current, 20, 21, 1);
+		set_cell(current, 20, 22, 1);
+		set_cell(current, 20, 23, 1);
 
 		// Update next with current state
 		for (int y = 0; y < CELL_ROWS; ++y) {
@@ -93,6 +111,11 @@ int main() {
 		lifemap_t* prev = current;
 		current = next;
 		next = prev;
+
+		if (iter > 10000)
+			memset(current, 0, sizeof(*current));
+
+		PARALLEL_IO_B[0] = 0xAA;
 	}
 
 	return 0;
