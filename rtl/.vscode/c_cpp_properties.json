@@ -2,7 +2,7 @@
     "configurations": [
         {
             "name": "Verilator",
-            "compilerPath": "/bin/clang++",
+            "compilerPath": "/bin/gcc",
             "compilerArgs": [
                 "-cc"
             ],
