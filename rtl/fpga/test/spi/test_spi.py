@@ -43,34 +43,32 @@ async def spi_transact(dut, txdata):
     await bus_write(dut, BASEADDR+8, txdata, 0b0001)
 
     # Get control and update it
-    control = 0b01_0_0 # FIXME: Actually read control register
-    # print(f"Control is: {control}")
-    control |= 1 # tx_start
-    await bus_write(dut, BASEADDR+4, control, 0b0001)
+    control_base = await bus_read(dut, BASEADDR+4) # FIXME: Actually read control register
+    # print(f"Control is: {control_base}")
+    await bus_write(dut, BASEADDR+4, control_base | 1, 0b0001)
     
-    # TODO: Make sure status (spi finished) is immediately low after TX start so I don't need a clk in here
-    # await clk(dut)
     while 1:
         stat = await bus_read(dut, BASEADDR)
         if not (stat & 2):
             break
     
     # Unset start bit
-    control &= 0xFF ^ 1 # tx_start
-    await bus_write(dut, BASEADDR+4, control, 0b0001)
+    await bus_write(dut, BASEADDR+4, control_base, 0b0001)
 
     rd = await bus_read(dut, BASEADDR+8)
     return ((rd) >> 8) & 0xFF
 
 @cocotb.test()
 async def test_spi(dut):
-    control = 0b01_0_0
-    await bus_write(dut, BASEADDR+4, control, 0b0001)
-    # data = await bus_read(dut, BASEADDR+4)
-    # assert data == control
-
+    global LOOPBACK
     LOOPBACK = 1
+
+    # for divider in range(0, 16):
+    divider = 0b0011
+    print(f"Testing with divider = {divider:04b}")
+    control = 0b0000_0_0 | (divider << 2)
+    await bus_write(dut, BASEADDR+4, control, 0b0001)
+
     for b in range(256):
         rx = await spi_transact(dut, b)
         assert rx == b
-    # print(f"Received: {rx}")

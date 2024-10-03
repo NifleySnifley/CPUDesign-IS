@@ -81,44 +81,107 @@ module spi_controller #(
     // spi_clk = clk/(2^clkdiv) 
     wire spi_clkin = clkdiv == 0 ? clk : div_ctr[clkdiv-1];
 
-    // TX start crossover into SPI clock domain (not strictly neccesary because they are the same clock though)
-    reg  tx_start_prev = 0;
-    always @(negedge spi_clkin) begin
-        tx_start_prev <= tx_start;
-    end
-    wire tx_start_posedge_spiclk = tx_start & ~tx_start_prev;
-
     // State logic
     reg [7:0] tx_sr = 0;
     reg [7:0] rx_sr = 0;
     reg [3:0] bits_to_tx = 0;
     wire spi_finished = ~(|bits_to_tx);
     // FIXME: Make this high as soon as a start is requested even before it starts txing!
-    wire spi_busy = tx_start_posedge_spiclk | (~spi_finished);
+    reg spi_busy;
+
+    // reg spi_clkin_prev;
+    // reg pv_txstart_clk = 0;
+    // always @(posedge clk) begin
+    //     if (tx_start & ~pv_txstart_clk) begin
+    //         spi_busy <= 1;
+    //         // Posedge of spi_clkin
+    //     end else begin
+    //         spi_busy <= 0;
+    //     end
+    //     /*
+    // 	else if (spi_clkin & ~spi_clkin_prev) begin
+    //         // if (spi_finished) spi_busy <= 0;
+    //     end*/
+    //     pv_txstart_clk <= tx_start;
+    //     spi_clkin_prev <= spi_clkin;
+    // end
 
     assign sclk = spi_clkin & (~spi_finished);
 
     assign datain = rx_sr;
     assign data_tx = tx_sr[7];
 
-    always @(negedge spi_clkin) begin
-        if (reset) begin
-            tx_sr <= 0;
-            rx_sr <= 0;
-        end else begin
-            if (tx_start_posedge_spiclk) begin
-                bits_to_tx <= 8;
-                tx_sr <= dataout;
+    // always @(negedge spi_clkin) begin
+    //     if (reset) begin
+    //         tx_sr <= 0;
+    //         rx_sr <= 0;
+    //     end else begin
+    //         if (tx_start_posedge_spiclk) begin
+    //             bits_to_tx <= 8;
+    //             tx_sr <= dataout;
+    //             rx_sr <= 0;
+    //         end else if (~spi_finished) begin
+    //             // Posedge of SPI clock, output data here or on negedge????
+    //             // LSB first
+    //             // OLD: This was LSB first
+    //             // tx_sr <= {1'b0, tx_sr[7:1]};
+    //             // rx_sr <= {data_rx, rx_sr[7:1]};
+    //             tx_sr <= {tx_sr[6:0], 1'b0};
+    //             rx_sr <= {rx_sr[6:0], data_rx};
+    //             bits_to_tx <= bits_to_tx - 1;
+    //         end
+    //     end
+    // end
+    reg  spi_clkin_prev = 0;
+    wire spi_clkin_negedge = (~spi_clkin) & spi_clkin_prev;
+    reg  tx_start_prev = 0;
+    wire tx_start_posedge = tx_start & ~tx_start_prev;
+
+    // always @(negedge spi_clkin) begin
+    // end
+    always @(negedge clk) begin
+        tx_start_prev  <= tx_start;
+        spi_clkin_prev <= spi_clkin;
+        // Handle special case where SPI is operating at max clock
+        if (clkdiv == 0) begin
+            if (reset) begin
+                tx_sr <= 0;
                 rx_sr <= 0;
-            end else if (~spi_finished) begin
-                // Posedge of SPI clock, output data here or on negedge????
-                // LSB first
-                // OLD: This was LSB first
-                // tx_sr <= {1'b0, tx_sr[7:1]};
-                // rx_sr <= {data_rx, rx_sr[7:1]};
-                tx_sr <= {tx_sr[6:0], 1'b0};
-                rx_sr <= {rx_sr[6:0], data_rx};
-                bits_to_tx <= bits_to_tx - 1;
+            end else begin
+                // Wait for SPICLK to have a negedge before actually starting the transaction
+                // Immediately raise spi_busy, but wait for negedge on spi clock to open the gate for SCLK
+                if (tx_start_posedge) begin
+                    bits_to_tx <= 8;
+                    tx_sr <= dataout;
+                    rx_sr <= 0;
+                    spi_busy <= 1;
+                end else if (~spi_finished) begin
+                    tx_sr <= {tx_sr[6:0], 1'b0};
+                    rx_sr <= {rx_sr[6:0], data_rx};
+                    bits_to_tx <= bits_to_tx - 1;
+                end else if (spi_finished) begin
+                    spi_busy <= 0;
+                end
+            end
+        end else begin
+            // Handle general case of divided clock (more lax timing)
+            // Always operates on negedge
+            if (reset) begin
+                tx_sr <= 0;
+                rx_sr <= 0;
+            end else begin
+                if (tx_start_posedge) begin
+                    bits_to_tx <= 8;
+                    tx_sr <= dataout;
+                    rx_sr <= 0;
+                    spi_busy <= 1;
+                end else if (~spi_finished & spi_clkin_negedge) begin
+                    tx_sr <= {tx_sr[6:0], 1'b0};
+                    rx_sr <= {rx_sr[6:0], data_rx};
+                    bits_to_tx <= bits_to_tx - 1;
+                end else if (spi_finished) begin
+                    spi_busy <= 0;
+                end
             end
         end
     end
