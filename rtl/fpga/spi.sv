@@ -21,23 +21,24 @@ module spi_controller #(
     // input wire spi_clkin,
 
     output wire sclk,
-    output reg  data_tx,
+    output wire data_tx,
     input  wire data_rx
 );
+
+    /////////////////////////////////////// BUS INTERFACE ///////////////////////////////////////
     parameter REG_STATUS = ADDR + 0;
     parameter REG_CONTROL = ADDR + 4;
     parameter REG_DATA = ADDR + 8;  // +0 = DATAOUT, +1=DATAIN
 
     wire [31:0] status;
-    // Default clock divider = 3
-    reg  [31:0] control = {26'b0, 4'd3, 1'b0, 1'b0};
+    reg  [31:0] control = 0;
     reg  [ 7:0] dataout;
-    wire [ 7:0] datain;
+    reg  [ 7:0] datain;
 
     assign active = (addr == REG_STATUS) | (addr == REG_CONTROL) | (addr == REG_DATA);
     assign ready  = 1;
 
-    // Bus interface for control and data registers
+    // Bus writing
     always @(posedge clk) begin
         if (wen) begin
             case (addr)
@@ -57,6 +58,7 @@ module spi_controller #(
         end
     end
 
+    // Bus reading
     always_comb begin
         case (addr)
             REG_STATUS: rdata = status;
@@ -66,123 +68,91 @@ module spi_controller #(
         endcase
     end
 
-    // Control bits
+    /////////////////////////////////////// CONTROL DECODING ///////////////////////////////////////
     wire tx_start = control[0];
-    wire reset = control[1];
-    wire [3:0] clkdiv = control[5:2];  // 4 bits of clock divider
-    // Status bits
+    // wire reset = control[1];
+    wire [29:0] clkdivider = control[31:2];  // 30 bits of clock divider
+    wire spi_busy, spi_finished;
     assign status = {30'b0, spi_busy, spi_finished};
 
-    // SPI Clock Divider
-    reg [14:0] div_ctr;
-    always @(posedge clk) begin
-        div_ctr <= div_ctr + 1;
-    end
-    // spi_clk = clk/(2^clkdiv) 
-    wire spi_clkin = clkdiv == 0 ? clk : div_ctr[clkdiv-1];
-
-    // State logic
-    reg [7:0] tx_sr = 0;
-    reg [7:0] rx_sr = 0;
-    reg [3:0] bits_to_tx = 0;
-    wire spi_finished = ~(|bits_to_tx);
-    // FIXME: Make this high as soon as a start is requested even before it starts txing!
-    reg spi_busy;
-
-    // reg spi_clkin_prev;
-    // reg pv_txstart_clk = 0;
-    // always @(posedge clk) begin
-    //     if (tx_start & ~pv_txstart_clk) begin
-    //         spi_busy <= 1;
-    //         // Posedge of spi_clkin
-    //     end else begin
-    //         spi_busy <= 0;
-    //     end
-    //     /*
-    // 	else if (spi_clkin & ~spi_clkin_prev) begin
-    //         // if (spi_finished) spi_busy <= 0;
-    //     end*/
-    //     pv_txstart_clk <= tx_start;
-    //     spi_clkin_prev <= spi_clkin;
-    // end
-
-    assign sclk = spi_clkin & (~spi_finished);
-
-    assign datain = rx_sr;
-    assign data_tx = tx_sr[7];
-
-    // always @(negedge spi_clkin) begin
-    //     if (reset) begin
-    //         tx_sr <= 0;
-    //         rx_sr <= 0;
-    //     end else begin
-    //         if (tx_start_posedge_spiclk) begin
-    //             bits_to_tx <= 8;
-    //             tx_sr <= dataout;
-    //             rx_sr <= 0;
-    //         end else if (~spi_finished) begin
-    //             // Posedge of SPI clock, output data here or on negedge????
-    //             // LSB first
-    //             // OLD: This was LSB first
-    //             // tx_sr <= {1'b0, tx_sr[7:1]};
-    //             // rx_sr <= {data_rx, rx_sr[7:1]};
-    //             tx_sr <= {tx_sr[6:0], 1'b0};
-    //             rx_sr <= {rx_sr[6:0], data_rx};
-    //             bits_to_tx <= bits_to_tx - 1;
-    //         end
-    //     end
-    // end
-    reg  spi_clkin_prev = 0;
-    wire spi_clkin_negedge = (~spi_clkin) & spi_clkin_prev;
-    reg  tx_start_prev = 0;
-    wire tx_start_posedge = tx_start & ~tx_start_prev;
-
-    // always @(negedge spi_clkin) begin
-    // end
-    always @(negedge clk) begin
-        tx_start_prev  <= tx_start;
-        spi_clkin_prev <= spi_clkin;
-        // Handle special case where SPI is operating at max clock
-        if (clkdiv == 0) begin
-            if (reset) begin
-                tx_sr <= 0;
-                rx_sr <= 0;
-            end else begin
-                // Wait for SPICLK to have a negedge before actually starting the transaction
-                // Immediately raise spi_busy, but wait for negedge on spi clock to open the gate for SCLK
-                if (tx_start_posedge) begin
-                    bits_to_tx <= 8;
-                    tx_sr <= dataout;
-                    rx_sr <= 0;
-                    spi_busy <= 1;
-                end else if (~spi_finished) begin
-                    tx_sr <= {tx_sr[6:0], 1'b0};
-                    rx_sr <= {rx_sr[6:0], data_rx};
-                    bits_to_tx <= bits_to_tx - 1;
-                end else if (spi_finished) begin
-                    spi_busy <= 0;
-                end
-            end
+    /////////////////////////////////////// SPI CLOCKGEN ///////////////////////////////////////
+    reg clock_spi;
+    reg [29:0] clk_counter;
+    always @(posedge clk, negedge clk) begin
+        if (clk_counter >= clkdivider) begin
+            clk_counter <= 0;
+            clock_spi   <= ~clock_spi;
         end else begin
-            // Handle general case of divided clock (more lax timing)
-            // Always operates on negedge
-            if (reset) begin
-                tx_sr <= 0;
-                rx_sr <= 0;
-            end else begin
-                if (tx_start_posedge) begin
-                    bits_to_tx <= 8;
-                    tx_sr <= dataout;
-                    rx_sr <= 0;
-                    spi_busy <= 1;
-                end else if (~spi_finished & spi_clkin_negedge) begin
-                    tx_sr <= {tx_sr[6:0], 1'b0};
-                    rx_sr <= {rx_sr[6:0], data_rx};
-                    bits_to_tx <= bits_to_tx - 1;
-                end else if (spi_finished) begin
-                    spi_busy <= 0;
-                end
-            end
+            clk_counter <= clk_counter + 1;
         end
     end
+
+    /////////////////////////////////////// SPI TRANSACTION ///////////////////////////////////////
+    // TODO: Everything must cross over to spi clock domain!
+    parameter SPI_STATE_IDLE = 4'b0001;
+    parameter SPI_STATE_TRANSCEIVING = 4'b0010;
+    parameter SPI_STATE_DONE = 4'b0100;
+    reg [3:0] spi_state = SPI_STATE_IDLE;
+    reg [3:0] bits_remaining = 0;
+
+    // Busy if transmission has been started and is idle
+    assign spi_busy = (spi_state != SPI_STATE_IDLE) | tx_start;
+    assign spi_finished = (spi_state == SPI_STATE_DONE);
+    reg spi_clock_gate = 0;
+    assign sclk = clock_spi & spi_clock_gate;
+
+    reg [7:0] shift_in;
+    reg [7:0] shift_out;
+
+    assign data_tx = shift_out[7];
+
+    reg prev_clock_spi = 0;
+    wire clock_spi_posedge = (clock_spi & ~prev_clock_spi);
+    wire clock_spi_negedge = (~clock_spi & prev_clock_spi);
+
+    always @(negedge clock_spi, posedge clock_spi) begin
+        prev_clock_spi <= clock_spi;
+        case (spi_state)
+            SPI_STATE_IDLE: begin
+                if (~clock_spi & tx_start) begin
+                    spi_clock_gate <= 1;
+                    bits_remaining <= 8;
+                    shift_out <= dataout;
+                    shift_in <= 0;
+                    datain <= 0;
+                    spi_state <= SPI_STATE_TRANSCEIVING;
+                end else begin
+                    spi_clock_gate <= 0;
+                    datain <= shift_in;
+                end
+            end
+            SPI_STATE_TRANSCEIVING: begin
+                if (bits_remaining == 0) begin
+                    spi_clock_gate <= 0;
+                    datain <= shift_in;
+                    shift_out <= 0;
+
+                    spi_state <= SPI_STATE_DONE;
+                end else begin
+                    if (~clock_spi) begin
+                        // Output data on falling edge, shift out MSB first
+                        shift_out <= {shift_out[6:0], 1'b0};
+                    end
+
+                    if (clock_spi) begin
+                        shift_in <= {shift_in[6:0], data_rx};
+                        bits_remaining <= bits_remaining - 1;
+                    end
+                end
+            end
+            SPI_STATE_DONE: begin
+                // When TX goes low, reset
+                if (~tx_start) spi_state <= SPI_STATE_IDLE;
+            end
+            default: spi_state <= SPI_STATE_IDLE;
+        endcase
+    end
+
+    // Receive using gated SCLK
+
 endmodule
