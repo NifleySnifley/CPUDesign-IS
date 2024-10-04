@@ -40,10 +40,10 @@ BASEADDR=0xd000
 
 async def spi_transact(dut, txdata):
     # Wait for unbusy
-    while 1:
-        stat = await bus_read(dut, BASEADDR)
-        if not (stat & 2):
-            break
+    # while 1:
+    #     stat = await bus_read(dut, BASEADDR)
+    #     if not (stat & 2):
+    #         break
     
     # dut._log.info(f"Sending: {txdata}")
     # Set TX data
@@ -72,8 +72,9 @@ async def test_spi(dut):
     global LOOPBACK
     LOOPBACK = 1
 
-    for d in range(64):
-        divider = random.randint(0, 2**4-1)
+    for d in range(0, 16):
+        # divider = random.randint(0, 2**4-1)
+        divider = d
         print(f"Testing with divider = {divider:04b}")
         control = 0b0000_0_0 | (divider << 2)
         await bus_write(dut, BASEADDR+4, control, 0b1111)

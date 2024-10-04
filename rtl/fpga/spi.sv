@@ -78,12 +78,21 @@ module spi_controller #(
     /////////////////////////////////////// SPI CLOCKGEN ///////////////////////////////////////
     reg clock_spi;
     reg [29:0] clk_counter;
+    reg txstart_prev = 0;
     always @(posedge clk, negedge clk) begin
-        if (clk_counter >= clkdivider) begin
-            clk_counter <= 0;
-            clock_spi   <= ~clock_spi;
+        txstart_prev <= tx_start;
+
+        // Hot-start the SPI clock for some reason (saves time in spi transaction)
+        if (~txstart_prev & tx_start) begin
+            clk_counter <= clkdivider;
+            clock_spi   <= 1;
         end else begin
-            clk_counter <= clk_counter + 1;
+            if (clk_counter >= clkdivider) begin
+                clk_counter <= 0;
+                clock_spi   <= ~clock_spi;
+            end else begin
+                clk_counter <= clk_counter + 1;
+            end
         end
     end
 
@@ -110,11 +119,11 @@ module spi_controller #(
     wire clock_spi_posedge = (clock_spi & ~prev_clock_spi);
     wire clock_spi_negedge = (~clock_spi & prev_clock_spi);
 
-    always @(negedge clock_spi, posedge clock_spi) begin
+    always @(negedge clk, posedge clk) begin
         prev_clock_spi <= clock_spi;
         case (spi_state)
             SPI_STATE_IDLE: begin
-                if (~clock_spi & tx_start) begin
+                if (clock_spi_negedge & tx_start) begin
                     spi_clock_gate <= 1;
                     bits_remaining <= 8;
                     shift_out <= dataout;
@@ -127,19 +136,19 @@ module spi_controller #(
                 end
             end
             SPI_STATE_TRANSCEIVING: begin
-                if (bits_remaining == 0) begin
+                if (bits_remaining == 0 & clock_spi_negedge) begin
                     spi_clock_gate <= 0;
                     datain <= shift_in;
                     shift_out <= 0;
 
                     spi_state <= SPI_STATE_DONE;
                 end else begin
-                    if (~clock_spi) begin
+                    if (clock_spi_negedge) begin
                         // Output data on falling edge, shift out MSB first
                         shift_out <= {shift_out[6:0], 1'b0};
                     end
 
-                    if (clock_spi) begin
+                    if (clock_spi_posedge) begin
                         shift_in <= {shift_in[6:0], data_rx};
                         bits_remaining <= bits_remaining - 1;
                     end
@@ -147,7 +156,7 @@ module spi_controller #(
             end
             SPI_STATE_DONE: begin
                 // When TX goes low, reset
-                if (~tx_start) spi_state <= SPI_STATE_IDLE;
+                if (clk & ~tx_start) spi_state <= SPI_STATE_IDLE;
             end
             default: spi_state <= SPI_STATE_IDLE;
         endcase
