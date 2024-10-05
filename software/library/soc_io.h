@@ -38,6 +38,7 @@ void _reg_word_set_bit(volatile uint32_t* reg, uint32_t bit, bool state);
 uint8_t spi_transfer(uint8_t data);
 // Returns output SPI clock frequency
 uint32_t spi_set_clkdiv(uint32_t clkdiv);
+void spi_set_hw_cs(bool active);
 
 void gpio_set_output(uint32_t gpio_n, bool output_enable);
 void gpio_set_level(uint32_t gpio_n, bool level);

@@ -22,7 +22,8 @@ module spi_controller #(
 
     output wire sclk,
     output wire data_tx,
-    input  wire data_rx
+    input  wire data_rx,
+    output wire cs
 );
 
     /////////////////////////////////////// BUS INTERFACE ///////////////////////////////////////
@@ -70,10 +71,12 @@ module spi_controller #(
 
     /////////////////////////////////////// CONTROL DECODING ///////////////////////////////////////
     wire tx_start = control[0];
-    // wire reset = control[1];
+    wire hw_cs_n = control[1];
     wire [29:0] clkdivider = control[31:2];  // 30 bits of clock divider
     wire spi_busy, spi_finished;
     assign status = {30'b0, spi_busy, spi_finished};
+
+    assign cs = ~hw_cs_n;
 
     /////////////////////////////////////// SPI CLOCKGEN ///////////////////////////////////////
     reg clock_spi;

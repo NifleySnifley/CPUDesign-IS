@@ -57,6 +57,18 @@ int print_integer(int number) {
 	return n;
 }
 
+void _reg_word_set_bit(volatile uint32_t* reg, uint32_t bit, bool state) {
+	if (bit < 32) {
+		uint32_t oe_v = *reg;
+		uint32_t pin = 1 << bit;
+		if (state)
+			oe_v |= (pin);
+		else
+			oe_v &= (~pin);
+		*reg = oe_v;
+	}
+}
+
 uint8_t spi_transfer(uint8_t data) {
 	SPI_DATA_TX = data;
 	SPI_CONTROL = SPI_CONTROL | 1; // Set TX bit
@@ -76,16 +88,8 @@ uint32_t spi_set_clkdiv(uint32_t clkdiv) {
 	return F_CPU / clkdiv;
 }
 
-void _reg_word_set_bit(volatile uint32_t* reg, uint32_t bit, bool state) {
-	if (bit < 32) {
-		uint32_t oe_v = *reg;
-		uint32_t pin = 1 << bit;
-		if (state)
-			oe_v |= (pin);
-		else
-			oe_v &= (~pin);
-		*reg = oe_v;
-	}
+void spi_set_hw_cs(bool active) {
+	_reg_word_set_bit(&SPI_CONTROL, 1, active);
 }
 
 void gpio_set_output(uint32_t gpio_n, bool output_enable) {
