@@ -11,6 +11,13 @@
 		"soc_io.h": "c",
 		"soc_core.h": "c",
 		"sstream": "c",
-		"regex": "c"
+		"regex": "c",
+		"optional": "c",
+		"system_error": "c",
+		"array": "c",
+		"functional": "c",
+		"tuple": "c",
+		"type_traits": "c",
+		"utility": "c"
 	}
 }

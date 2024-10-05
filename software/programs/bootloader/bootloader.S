@@ -90,6 +90,8 @@ metadata_busyread:
 	li        s2, 1 // Current sector
 	li        s3, MEMORY_BASE_ADDRESS // Current writing addr
 
+	ebreak
+
 sector_read:
 	mv        a0, s2
 	SET_CS(0)
@@ -121,6 +123,7 @@ skip_write:
 	blt       s2, s0, sector_read
 
 	//        DONE!!!!
+	ebreak
 
 	//        Reset all GPIO
 	li        t1, GPIO_BASE

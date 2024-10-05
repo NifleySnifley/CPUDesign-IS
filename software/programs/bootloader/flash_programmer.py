@@ -198,4 +198,4 @@ if __name__ == "__main__":
 
     args.func(args)
 
-    # PORT.close()
+    PORT.close()

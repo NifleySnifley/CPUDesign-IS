@@ -16,6 +16,9 @@ uint32_t pc_start = 0;
 uint32_t memory_size = 0x2000;
 bool tracing = false;
 
+static char* memory_tracefile = NULL;
+static FILE* memory_tracefile_ptr = NULL;
+
 void dump_sim() {
     if (memory_output_file != NULL) {
         printf("Dumping memory to '%s'\n", memory_output_file);
@@ -44,11 +47,25 @@ void instr_trace(void* _sim, const char* inst_str) {
     printf("%s @ %x\n", inst_str, simptr->pc);
 }
 
+rv_sim_read_fn_t original_read_byte_fn;
+rv_sim_write_fn_t original_write_byte_fn;
+
+uint8_t read_byte_fn(void* arg, uint32_t addr) {
+    uint8_t value = original_read_byte_fn(arg, addr);
+    fprintf(memory_tracefile_ptr, "r,%x,%x\n", addr, value);
+    return value;
+}
+
+void write_byte_fn(void* arg, uint32_t addr, uint8_t value) {
+    original_write_byte_fn(arg, addr, value);
+    fprintf(memory_tracefile_ptr, "w,%x,%x\n", addr, value);
+}
+
 int main(int argc, char** argv) {
     RV_SIM_VERBOSE = true;
 
     int opt;
-    while ((opt = getopt(argc, argv, "p:m:o:r:v")) != -1) {
+    while ((opt = getopt(argc, argv, "p:m:o:r:vl:")) != -1) {
         switch (opt) {
             case 'p':
                 // Parse PC
@@ -56,6 +73,9 @@ int main(int argc, char** argv) {
                 break;
             case 'm':
                 memory_size = (uint32_t)atol(optarg);
+                break;
+            case 'l':
+                memory_tracefile = optarg;
                 break;
             case 'o':
                 memory_output_file = optarg;
@@ -67,7 +87,7 @@ int main(int argc, char** argv) {
                 tracing = true;
                 break;
             default:
-                fprintf(stderr, "Usage: %s [-p pc = 0x0 ] [-m memory-size = 0x2000 ] [-o memory-dumpfile = memory.bin ] [-r register-dumpfile = registers.csv ] [-v (verbose) ] input_memory.bin \n",
+                fprintf(stderr, "Usage: %s [-p pc = 0x0 ] [-m memory-size = 0x2000 ] [-o memory-dumpfile = memory.bin ] [-r register-dumpfile = registers.csv ] [-v (verbose) ] [-l memory_tracefile ] input_memory.bin \n",
                     argv[0]);
                 exit(EXIT_FAILURE);
         }
@@ -79,6 +99,7 @@ int main(int argc, char** argv) {
     }
 
     const char* memory_input_file = argv[optind];
+    if (memory_tracefile != NULL) memory_tracefile_ptr = fopen(memory_tracefile, "w");
 
     signal(SIGINT, signal_handler);
 
@@ -90,6 +111,13 @@ int main(int argc, char** argv) {
     sim.x[2] = 0x1800; // FIXME: setting stack pointer somewhere in RAM
     sim.pc = pc_start;
 
+    if (memory_tracefile_ptr != NULL) {
+        original_read_byte_fn = sim.memory_interface.read_byte_fn;
+        original_write_byte_fn = sim.memory_interface.write_byte_fn;
+        sim.memory_interface.read_byte_fn = read_byte_fn;
+        sim.memory_interface.write_byte_fn = write_byte_fn;
+        fprintf(memory_tracefile_ptr, "mode,addr,value\n");
+    }
 
     // Read initial memory contents from binary file (from assembler/compiler converted with objdump from elf)
     int numloaded = rv_simulator_load_memory_from_file(&sim, memory_input_file, FILETYPE_AUTO, 0);
@@ -128,6 +156,8 @@ int main(int argc, char** argv) {
             }
         }
     }
+
+    if (memory_tracefile_ptr != NULL) fclose(memory_tracefile_ptr);
 
     dump_sim();
 
