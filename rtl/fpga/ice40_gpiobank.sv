@@ -1,6 +1,6 @@
 module ice40_gpiobank #(
-    parameter ADDR = 32'ha000,
-    parameter N_IO = 4
+    parameter ADDR = 32'hA000,
+    parameter N_IO = 16
 ) (
     input wire clk,
     input wire [31:0] addr,
@@ -20,13 +20,16 @@ module ice40_gpiobank #(
     localparam OV_ADDR = ADDR + 4;
     localparam IV_ADDR = ADDR + 8;
 
+    localparam N_FILL = 32 - N_IO;
+
     assign active = (addr[31:2] >= ADDR[31:2]) && (addr[31:2] <= (ADDR[31:2] + N_REGISTERS));
 
-    reg  [N_IO-1:0] output_enable;
-    reg  [N_IO-1:0] output_value;
-    wire [N_IO-1:0] input_value;
+    reg [N_IO-1:0] output_enable;
+    reg [N_IO-1:0] output_value;
+    wire [31:0] input_value;
 
     assign input_value[N_IO-1:0] = io_pins;
+    assign input_value[31:N_IO]  = 0;
     generate
         genvar i;
         for (i = 0; i < N_IO; i = i + 1) begin

@@ -1,8 +1,9 @@
 OBJCOPY=../../simulator/asm2bin.py
 LIBDIR=../../library
 SIMULATOR=../../simulator/build/sim_emulator
+LIB_SOURCES=$(LIBDIR)/crt0.S $(LIBDIR)/soc_core.c $(LIBDIR)/soc_io.c
 COMPILE=riscv32-unknown-elf-gcc -I$(LIBDIR) -g -march=rv32im -mabi=ilp32  -Wall -nostartfiles  -ffunction-sections -fdata-sections -mstrict-align -Wl,--gc-sections -ffp-contract=off 
-COMPILE_FULL=$(COMPILE) -lm -lc -lgcc $(LIBDIR)/crt0.S $(LIBDIR)/soc_core.c
+COMPILE_FULL=$(COMPILE) -lm -lc -lgcc $(LIB_SOURCES)
 
 .PHONY: all
 all: build/test_bootloaded.hex build/bootloader.hex
