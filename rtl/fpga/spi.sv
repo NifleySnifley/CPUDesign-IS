@@ -82,7 +82,7 @@ module spi_controller #(
     reg clock_spi;
     reg [29:0] clk_counter;
     reg txstart_prev = 0;
-    always @(posedge clk, negedge clk) begin
+    always @(posedge clk) begin
         txstart_prev <= tx_start;
 
         // Hot-start the SPI clock for some reason (saves time in spi transaction)
@@ -122,7 +122,7 @@ module spi_controller #(
     wire clock_spi_posedge = (clock_spi & ~prev_clock_spi);
     wire clock_spi_negedge = (~clock_spi & prev_clock_spi);
 
-    always @(negedge clk, posedge clk) begin
+    always @(posedge clk) begin
         prev_clock_spi <= clock_spi;
         case (spi_state)
             SPI_STATE_IDLE: begin

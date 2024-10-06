@@ -12,7 +12,7 @@ PACKAGE=cb132 # Upduino: sg48, iceFUN: cb132
 PROGTOOL=iceFUNprog #Upduino: "iceprog -d i:0x0403:0x6014", iceFUN: iceFUNprog
 
 PROJNAME=soc_iceFUN
-SRCFILES=../cpu/cpu.sv ../alu/alu.sv ./$(PROJNAME).sv ../common/memory_spram.sv ../common/memory.sv ../common/bus_hub_4.sv ../common/bus_hub_2.sv ../common/bus_hub_3.sv ../fpga/parallel_port.sv ../graphics/rtl/bw_textmode_gpu.sv
+SRCFILES=../cpu/cpu.sv ../alu/alu.sv ./$(PROJNAME).sv ../common/memory_spram.sv ../common/memory.sv ../common/bus_hub_4.sv ../common/bus_hub_2.sv ../common/bus_hub_3.sv ../common/bus_hub_5.sv ../fpga/parallel_port.sv ../fpga/spi.sv ../graphics/rtl/bw_textmode_gpu.sv
 TOPNAME=$(PROJNAME)
 PNR_ARGS=--$(DEVICE) --package $(PACKAGE) --json $(BUILDDIR)/$(PROJNAME).json --pcf ./$(PROJNAME).pcf --asc $(BUILDDIR)/$(PROJNAME)_base.asc
 
