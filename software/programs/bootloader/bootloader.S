@@ -135,6 +135,8 @@ start_sector_read:
 	call     spi_transact // Addr MSB
 	andi     a0, a1, 0xFF
 	call     spi_transact // Addr LSB
+	mv       a0, x0
+	call     spi_transact
 
 	POP(ra)
 	ret

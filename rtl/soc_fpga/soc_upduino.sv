@@ -17,7 +17,7 @@ module soc_upduino #(
 ) (
     // System inputs
     input clk12MHz,
-    input reset,
+    input reset_n,
 
     // TODO: Make a PWM peripheral and hook it to this!
     output wire led_green,
@@ -76,7 +76,7 @@ module soc_upduino #(
     wire rst_state;
     debouncer resetter (
         .clk(core_clk),
-        .signal(reset),
+        .signal(~reset_n),
         .pressed(rst_press),
         .state(rst_state)
     );

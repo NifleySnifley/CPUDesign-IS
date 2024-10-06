@@ -16,7 +16,7 @@
 #define SPI_W ((volatile uint32_t*)0xD000)
 #define SPI_B ((volatile uint8_t*)0xD000)
 #define SPI_STATUS SPI_W[0]
-#define SPI_CONTROL SPI_W[0]
+#define SPI_CONTROL SPI_W[1]
 #define SPI_DATA_TX SPI_B[8]
 #define SPI_DATA_RX SPI_B[9]
 

@@ -13,8 +13,9 @@ module parallel_output #(
 
     output reg [31:0] io
 );
-    assign ready  = 1;
-    assign rdata  = 0;
+    assign ready = 1;
+    assign rdata = 0;
+    initial io = 0;
 
     assign active = (addr[31:2] == ADDR[31:2]);
 

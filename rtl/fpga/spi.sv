@@ -37,7 +37,7 @@ module spi_controller #(
     reg  [ 7:0] datain;
 
     assign active = (addr == REG_STATUS) | (addr == REG_CONTROL) | (addr == REG_DATA);
-    assign ready  = 1;
+    // assign ready  = 1;
 
     // Bus writing
     always @(posedge clk) begin
@@ -59,6 +59,7 @@ module spi_controller #(
         end
     end
 
+    reg [31:0] transact_addr = 0;
     // Bus reading
     always_comb begin
         case (addr)
@@ -68,6 +69,10 @@ module spi_controller #(
             default: rdata = 32'b0;
         endcase
     end
+    always @(posedge clk) begin
+        transact_addr <= addr;
+    end
+    assign ready = (addr == transact_addr);
 
     /////////////////////////////////////// CONTROL DECODING ///////////////////////////////////////
     wire tx_start = control[0];
