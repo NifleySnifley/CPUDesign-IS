@@ -189,26 +189,11 @@ module soc_upduino #(
     wire pp_active;
 
     wire [31:0] parallel_io;
-    assign {
-        gpio17,
-        gpio16,
-        gpio15,
-        gpio14,
-        gpio13,
-        gpio12,
-        gpio11,
-        gpio10,
-        gpio9,
-        gpio8,
-        gpio7,
-        gpio6,
-        gpio5,
-        gpio4,
-        gpio3,
-        gpio2,
-        gpio1,
-        gpio0
-    } = parallel_io[17:0];
+    wire tmp1;
+    wire tmp2;
+    assign {gpio17, gpio16, gpio15, gpio14, gpio13, gpio12, tmp2,  //gpio11,
+        tmp1,  //gpio10,
+        gpio9, gpio8, gpio7, gpio6, gpio5, gpio4, gpio3, gpio2, gpio1, gpio0} = parallel_io[17:0];
 
     parallel_output pp (
         .clk(core_clk),
@@ -295,6 +280,8 @@ module soc_upduino #(
         .sclk(spi_sclk),
         .data_tx(spi_tx),
         .data_rx(spi_rx),
-        .cs(spi_hw_cs)
+        .cs(spi_hw_cs),
+        .debug1(gpio10),
+        .debug2(gpio11)
     );
 endmodule

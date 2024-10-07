@@ -23,7 +23,9 @@ module spi_controller #(
     output wire sclk,
     output wire data_tx,
     input  wire data_rx,
-    output wire cs
+    output wire cs,
+    output wire debug1,
+    output wire debug2
 );
 
     /////////////////////////////////////// BUS INTERFACE ///////////////////////////////////////
@@ -32,17 +34,17 @@ module spi_controller #(
     parameter REG_DATA = ADDR + 8;  // +0 = DATAOUT, +1=DATAIN
 
     wire [31:0] status;
-    reg  [31:0] control = 0;
-    reg  [ 7:0] dataout;
-    reg  [ 7:0] datain;
+    reg [31:0] control = 0;
+    reg [7:0] dataout = 0;
+    reg [7:0] datain = 0;
+    wire [31:0] addr_intnl = {addr[31:2], 2'b00};
 
-    assign active = (addr == REG_STATUS) | (addr == REG_CONTROL) | (addr == REG_DATA);
-    // assign ready  = 1;
+    assign active = (addr_intnl == REG_STATUS) | (addr_intnl == REG_CONTROL) | (addr_intnl == REG_DATA);
 
     // Bus writing
     always @(posedge clk) begin
         if (wen) begin
-            case (addr)
+            case (addr_intnl)
                 REG_CONTROL: begin
                     if (wmask[0]) control[7:0] <= wdata[7:0];
                     if (wmask[1]) control[15:8] <= wdata[15:8];
@@ -59,16 +61,16 @@ module spi_controller #(
         end
     end
 
-    reg [31:0] transact_addr = 0;
     // Bus reading
     always_comb begin
-        case (addr)
+        case (addr_intnl)
             REG_STATUS: rdata = status;
             REG_CONTROL: rdata = control;
             REG_DATA: rdata = {16'b0, datain, dataout};
             default: rdata = 32'b0;
         endcase
     end
+    reg [31:0] transact_addr = 0;
     always @(posedge clk) begin
         transact_addr <= addr;
     end
@@ -84,8 +86,8 @@ module spi_controller #(
     assign cs = ~hw_cs_n;
 
     /////////////////////////////////////// SPI CLOCKGEN ///////////////////////////////////////
-    reg clock_spi;
-    reg [29:0] clk_counter;
+    reg clock_spi = 0;
+    reg [29:0] clk_counter = 0;
     reg txstart_prev = 0;
     always @(posedge clk) begin
         txstart_prev <= tx_start;
@@ -118,8 +120,8 @@ module spi_controller #(
     reg spi_clock_gate = 0;
     assign sclk = clock_spi & spi_clock_gate;
 
-    reg [7:0] shift_in;
-    reg [7:0] shift_out;
+    reg [7:0] shift_in = 0;
+    reg [7:0] shift_out = 0;
 
     assign data_tx = shift_out[7];
 
@@ -136,18 +138,16 @@ module spi_controller #(
                     bits_remaining <= 8;
                     shift_out <= dataout;
                     shift_in <= 0;
-                    datain <= 0;
                     spi_state <= SPI_STATE_TRANSCEIVING;
                 end else begin
                     spi_clock_gate <= 0;
-                    datain <= shift_in;
                 end
             end
             SPI_STATE_TRANSCEIVING: begin
                 if (bits_remaining == 0 & clock_spi_negedge) begin
                     spi_clock_gate <= 0;
-                    datain <= shift_in;
                     shift_out <= 0;
+                    datain <= shift_in;
 
                     spi_state <= SPI_STATE_DONE;
                 end else begin
@@ -164,12 +164,12 @@ module spi_controller #(
             end
             SPI_STATE_DONE: begin
                 // When TX goes low, reset
-                if (clk & ~tx_start) spi_state <= SPI_STATE_IDLE;
+                if (~tx_start) spi_state <= SPI_STATE_IDLE;
             end
             default: spi_state <= SPI_STATE_IDLE;
         endcase
     end
 
-    // Receive using gated SCLK
-
+    assign debug1 = data_rx;
+    assign debug2 = clock_spi_posedge;
 endmodule

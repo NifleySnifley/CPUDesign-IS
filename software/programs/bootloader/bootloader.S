@@ -137,6 +137,7 @@ start_sector_read:
 	call     spi_transact // Addr LSB
 	mv       a0, x0
 	call     spi_transact
+	call     spi_transact
 
 	POP(ra)
 	ret
@@ -148,6 +149,7 @@ spi_transact:
 	sb       a0, SPI_REG_DATA_OUT(t0)
 
 	lw       a1, SPI_REG_CONTROL(t0) // a1 = control_base
+	ori      a1, a1, 4 // Set divider to 1
 	ori      a2, a1, 1 // Set send flag
 	sw       a2, SPI_REG_CONTROL(t0)
 

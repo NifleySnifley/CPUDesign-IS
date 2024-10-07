@@ -5,8 +5,8 @@ LIB_SOURCES=$(LIBDIR)/crt0.S $(LIBDIR)/soc_core.c $(LIBDIR)/soc_io.c
 COMPILE=riscv32-unknown-elf-gcc -I$(LIBDIR) -g -march=rv32im -mabi=ilp32  -Wall -nostartfiles  -ffunction-sections -fdata-sections -mstrict-align -Wl,--gc-sections -ffp-contract=off 
 COMPILE_FULL=$(COMPILE) -lm -lc -lgcc $(LIB_SOURCES)
 
-.PHONY: all
-all: build/test_bootloaded.hex build/bootloader.hex
+# .PHONY: all
+all: build/test_bootloaded.hex build/bootloader.hex build/bootloader_v2.hex
 
 # .PHONY: sim
 # sim: build/icefun_main.hex
@@ -20,6 +20,11 @@ build/bootloader.hex: build bootloader.S
 	$(COMPILE) bootloader.S -o build/bootloader.elf
 	riscv32-unknown-elf-size build/bootloader.elf
 	$(OBJCOPY) build/bootloader.elf --hex -o build/bootloader.hex
+
+build/bootloader_v2.hex: build bootloader_v2.c
+	$(COMPILE) -nostdlib -Os -T$(LIBDIR)/map.ld $(LIBDIR)/crt0_minimal.S $(LIBDIR)/soc_core.c $(LIBDIR)/soc_io.c bootloader_v2.c -o build/bootloader_v2.elf
+	riscv32-unknown-elf-size build/bootloader_v2.elf
+	$(OBJCOPY) build/bootloader_v2.elf --hex -o build/bootloader_v2.hex
 
 build:
 	mkdir -p build
