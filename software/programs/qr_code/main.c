@@ -7,34 +7,13 @@
 // Prints the given QR Code to the console.
 static void printQr(const uint8_t qrcode[]) {
 	int size = qrcodegen_getSize(qrcode);
-	// TODO: Use the double pixel format to print more efficiently
-	// for (int y = -border; y < size + border; y++) {
-	// 	for (int x = -border; x < size + border; x++) {
-	// 		print((qrcodegen_getModule(qrcode, x, y) ? pixel : "  "));
-	// 	}
-	// 	print("\n");
-	// }
-	// print("\n");
-
-	// stdout_col = 0;
-	// stdout_row = 0;
-	// for (int y = 0; y < size / 2; ++y) {
-	// 	for (int x = 0; x < size; ++x) {
-	// 		char c = qrcode[(y * 2) * size + x] ? 1 : 0;
-	// 		// if ((y * 2 + 1) < size) {
-	// 		// 	c |= qrcode[(y * 2 + 1) * size + x] ? 2 : 0;
-	// 		// }
-	// 		printchar(c);
-	// 	}
-	// 	printchar('\n');
-	// }
 
 	for (int x = 0; x < size; ++x) {
 		for (int y_2 = 0; y_2 < size / 2 + 1; ++y_2) {
-			if (y_2 == (size / 2 - 1) && x < (stdout_col - 1)) continue;
+			if (y_2 >= (size / 2 + 1) && x < (SCREENBUFFER_COLS - 1)) continue;
 			uint8_t high = qrcodegen_getModule(qrcode, x, (y_2 * 2));
 			uint8_t low = qrcodegen_getModule(qrcode, x, (y_2 * 2 + 1));
-			SCREENBUFFER_B[x + y_2 * SCREENBUFFER_COLS] = (high | (low << 1));
+			SCREENBUFFER_B[(x + 1) + (y_2 + 1) * SCREENBUFFER_COLS] = (high | (low << 1));
 		}
 	}
 }
@@ -52,7 +31,7 @@ int main() {
 	if (ok)
 		printQr(qrcode);
 
-	asm("ebreak");
+	// asm("ebreak");
 
 	while (1) {
 		PARALLEL_IO_B[0] = 0xAA;
