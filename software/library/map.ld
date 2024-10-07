@@ -1,8 +1,12 @@
 ENTRY(_start)
 
+BRAM_SIZE = 0x2800;
+STACK_SIZE = 0x100;
+
+
 MEMORY
 {
-    ram (rwx): ORIGIN = 0x00000000, LENGTH = 0x2000
+    ram (rwx): ORIGIN = 0x00000000, LENGTH = BRAM_SIZE
 }
 
 SECTIONS
@@ -17,7 +21,6 @@ SECTIONS
     .data : ALIGN(4) { *(.data*) } > ram
     .rodata : ALIGN(4) { *(.rodata*) } > ram
 
-    STACK_SIZE = 0x800;
     .stack (NOLOAD) : ALIGN(4)
     {
         . = ALIGN(4);

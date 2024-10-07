@@ -69,20 +69,27 @@ void _reg_word_set_bit(volatile uint32_t* reg, uint32_t bit, bool state) {
 	}
 }
 
-#pragma GCC push_options
-#pragma GCC optimize ("O0")
 uint8_t spi_transfer(uint8_t data) {
 	SPI_DATA_TX = data;
-	SPI_CONTROL = SPI_CONTROL | 1; // Set TX bit
+
+	uint32_t control_orig = SPI_CONTROL;
+	SPI_CONTROL = control_orig | 1; // Set TX bit
 	// Wait for TX done
-	while (1) {
-		if (SPI_STATUS & 1) break;
-	}
+	while ((SPI_STATUS & 1) == 0) {}
 	uint8_t rx = SPI_DATA_RX;
-	SPI_CONTROL = SPI_CONTROL & (~1); // Clear TX bit
-	return rx; // Could maybe just return SPI_DATA_RX but just makin sure
+	SPI_CONTROL = control_orig; // Clear TX bit
+
+	return rx;
 }
-#pragma GCC pop_options
+
+uint8_t spi_transfer_highspeed(uint8_t data) {
+	SPI_DATA_TX = data;
+	uint32_t control_orig = SPI_CONTROL;
+	SPI_CONTROL = control_orig | 1; // Set TX bit
+	uint8_t rx = SPI_DATA_RX;
+	SPI_CONTROL = control_orig; // Clear TX bit
+	return rx;
+}
 
 #define SPI_CONTROL_CLKDIV_MASK (0xFFFFFFFF ^ 0b11)
 // Returns output SPI clock frequency

@@ -36,6 +36,7 @@ int print_integer(int number);
 void _reg_word_set_bit(volatile uint32_t* reg, uint32_t bit, bool state);
 
 uint8_t spi_transfer(uint8_t data);
+uint8_t spi_transfer_highspeed(uint8_t data);
 // Returns output SPI clock frequency
 uint32_t spi_set_clkdiv(uint32_t clkdiv);
 void spi_set_hw_cs(bool active);

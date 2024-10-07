@@ -50,9 +50,12 @@ async def spi_transact(dut, txdata):
     await bus_write(dut, BASEADDR+8, txdata, 0b0001)
 
     # Get control and update it
-    control_base = await bus_read(dut, BASEADDR+4) # FIXME: Actually read control register
+    control_base = await bus_read(dut, BASEADDR+4)
     # print(f"Control is: {control_base}")
     await bus_write(dut, BASEADDR+4, control_base | 1, 0b0001)
+    
+    for i in range(10*4):
+        await clk(dut)
     
     while 1:
         stat = await bus_read(dut, BASEADDR)
@@ -83,3 +86,9 @@ async def test_spi(dut):
             b = random.randint(0, 255)
             rx = await spi_transact(dut, b)
             assert rx == b
+    
+    # control = 0b0000_0_0 | (0 << 2)
+    # await bus_write(dut, BASEADDR+4, control, 0b1111)
+    
+    # rx = await spi_transact(dut, 0xFF)
+    # assert rx == 0xFF
