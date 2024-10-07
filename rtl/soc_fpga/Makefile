@@ -1,11 +1,10 @@
 COMMONDIR=../common
 BUILDDIR=./build
 
-DEFAULT_PROGRAM=program.S
-MEMSIZE=2048
+MEMSIZE=2560
  # --pad $$(($(MEMSIZE) * 4))
 ASSEMBLER=../../software/simulator/asm2bin.py --hex --assemble
-BINARY=$(BUILDDIR)/program.hex
+BINARY=../../software/programs/bootloader/build/bootloader_v2.hex
 
 DEVICE=hx8k # Upduino: up5k, iceFUN: hx8k
 PACKAGE=cb132 # Upduino: sg48, iceFUN: cb132
@@ -30,9 +29,6 @@ $(BUILDDIR)/$(PROJNAME).json: $(BUILDDIR) $(SRCFILES) $(BUILDDIR)/phony.hex
 
 $(BUILDDIR)/phony.hex: $(BUILDDIR)
 	icebram -g 32 $(MEMSIZE) > $(BUILDDIR)/phony.hex
-
-$(BINARY): $(BUILDDIR) $(DEFAULT_PROGRAM)
-	$(ASSEMBLER) $(DEFAULT_PROGRAM) -o $(BINARY)
 
 $(BUILDDIR):
 	mkdir -p $(BUILDDIR)
