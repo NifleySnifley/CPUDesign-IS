@@ -14,6 +14,10 @@ module soc_sim #(
     wire [31:0] pc_output;
     wire [3:0] bus_wmask;
 
+    reg interrupt = 0;
+    reg [30:0] interrupt_cause = 0;
+    wire interrupt_serviced;
+
     cpu core0 (
         .clk,
         .rst,
@@ -25,6 +29,9 @@ module soc_sim #(
         .bus_wen,
         .bus_ren,
         .instruction_sync,
+        .interrupt,
+        .interrupt_cause,
+        .interrupt_serviced,
         .dbg_pc(pc_output)
     );
 

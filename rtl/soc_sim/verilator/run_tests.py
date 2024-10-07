@@ -90,6 +90,7 @@ if __name__ == "__main__":
 	ntests =len(successes) + len(fails)
 	print(f"Ran {ntests} tests, {ntests-len(successes)} failed ({100*len(successes)/ntests:.2f}% passed)")
 	print(f"Tests passed: {', '.join(successes)}")
-	print(f"Tests failed: {', '.join(fails)}")
-	print()
-	print(f"Specific instructions failed: {', '.join(set(fail_insns))}")
+	if len(fails):
+		print(f"Tests failed: {', '.join(fails)}")
+		print()
+		print(f"Specific instructions failed: {', '.join(set(fail_insns))}")

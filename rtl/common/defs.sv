@@ -46,3 +46,10 @@ parameter FUNCT3_SLTU = 3'h3;
 parameter FUNCT7_SUB = 7'h20;
 parameter FUNCT7_I = 7'h00;
 parameter FUNCT7_M = 7'h01;
+
+
+// CSR definitions
+parameter CSR_MCAUSE = 12'h342;
+
+// Privleged instruction defenitions
+parameter FUNCT3_PRIV = 0;

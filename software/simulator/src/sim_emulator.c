@@ -31,7 +31,7 @@
 static volatile bool EXIT = false;
 static bool enable_leds = false;
 static bool enable_vga = false;
-static bool enable_buttons = false;
+static bool emulate_bootloader = false;
 const char* fontfile = "build/font.bin";
 
 void set_pixel(SDL_Surface* surface, int x, int y, Uint32 pixel) {
@@ -63,10 +63,10 @@ void* sdl_window_thread_fn(void* arg) {
 	SDL_Window* led_window, * vga_window;
 
 	if (enable_leds)
-		led_window = SDL_CreateWindow("LED Matrix",
+		led_window = SDL_CreateWindow("LED Bar",
 			SDL_WINDOWPOS_UNDEFINED,
 			SDL_WINDOWPOS_UNDEFINED,
-			LED_SIZE * 8, LED_SIZE * 4,
+			LED_SIZE * 8, LED_SIZE * 3,
 			SDL_WINDOW_SHOWN);
 
 	if (enable_vga)
@@ -87,9 +87,8 @@ void* sdl_window_thread_fn(void* arg) {
 	printf("Opened GUI\n");
 
 	SDL_Rect led_rect;
-	uint8_t led_state[4] = { 0 };
-	led_rect.w = LED_SIZE;
-	led_rect.h = LED_SIZE;
+	led_rect.w = LED_SIZE - 2;
+	led_rect.h = LED_SIZE * 3;
 
 	SDL_Surface* character_bitmap = SDL_CreateRGBSurface(0, FONT_WIDTH, FONT_HEIGHT, 32, 0, 0, 0, 0);
 	SDL_Surface* vga_surface;
@@ -107,28 +106,22 @@ void* sdl_window_thread_fn(void* arg) {
 		}
 
 		if (enable_leds) {
-			SDL_SetRenderDrawColor(led_renderer, 0xFF, 0xFF, 0xFF, 0xFF);
+			SDL_SetRenderDrawColor(led_renderer, 0x00, 0x00, 0x00, 0xFF);
 			SDL_RenderClear(led_renderer);
 
 			uint8_t led_row = rv_simulator_read_byte(sim, 0xf000);
-			uint8_t led_row_select = rv_simulator_read_byte(sim, 0xf001);
-
-			for (int r = 0; r < 4; ++r) {
-				if (led_row_select & (1 << r))
-					led_state[r] = led_row;
-
-
-				for (int i = 0; i < 8; ++i) {
-					led_rect.x = LED_SIZE * i;
-					led_rect.y = LED_SIZE * r;
-					if ((led_state[r] >> i) & 1) {
-						SDL_SetRenderDrawColor(led_renderer, 0xFF, 0x00, 0x00, 0xFF);
-					} else {
-						SDL_SetRenderDrawColor(led_renderer, 0x00, 0x00, 0x00, 0xFF);
-					}
-					SDL_RenderFillRect(led_renderer, &led_rect);
+			// uint8_t led_row_select = rv_simulator_read_byte(sim, 0xf001);
+			for (int i = 0; i < 8; ++i) {
+				led_rect.x = LED_SIZE * i + 1;
+				led_rect.y = 0;
+				if ((led_row >> i) & 1) {
+					SDL_SetRenderDrawColor(led_renderer, 0x00, 0x80, 0x00, 0xFF);
+				} else {
+					SDL_SetRenderDrawColor(led_renderer, 0x00, 0x00, 0x00, 0xFF);
 				}
+				SDL_RenderFillRect(led_renderer, &led_rect);
 			}
+
 
 			SDL_RenderPresent(led_renderer);
 		}
@@ -188,7 +181,7 @@ int main(int argc, char** argv) {
 	signal(SIGINT, signal_handler);
 
 	int opt;
-	while ((opt = getopt(argc, argv, "lvbf:")) != -1) {
+	while ((opt = getopt(argc, argv, "lvbf:B")) != -1) {
 		switch (opt) {
 			case 'l':
 				enable_leds = true;
@@ -197,7 +190,7 @@ int main(int argc, char** argv) {
 				enable_vga = true;
 				break;
 			case 'b':
-				enable_buttons = true;
+				emulate_bootloader = true;
 				break;
 			case 'f':
 				fontfile = optarg;
@@ -218,19 +211,27 @@ int main(int argc, char** argv) {
 	rv_simulator_segmented_memory_t* memory = rv_simulator_init_segmented_memory(&sim);
 	rv_simulator_segmented_memory_add_segment(memory, 0, 2560 * 4, "Main Memory", false);
 	rv_simulator_segmented_memory_add_segment(memory, 0xf000, 4, "Parallel IO", false);
-	rv_simulator_segmented_memory_add_segment(memory, 0xf0000000, 16384, "SPRAM", false);
+	rv_simulator_segmented_memory_add_segment(memory, 0xf0000000, 131072, "SPRAM", false);
 	rv_simulator_segmented_memory_add_segment(memory, SCREENBUFFER_BASE_ADDR, SCREENBUFFER_SIZE_B, "Character Screenbuffer", false);
 	rv_simulator_segmented_memory_add_segment(memory, FONTRAM_BASE_ADDR, FONTRAM_SIZE_B, "Font RAM", false);
 
-	int nmem = rv_simulator_load_memory_from_file(&sim, program_filename, FILETYPE_AUTO, 0);
-	printf("Loaded %d bytes into main memory\n", nmem);
+	if (emulate_bootloader) {
+		int nmem = rv_simulator_load_memory_from_file(&sim, program_filename, FILETYPE_AUTO, 0xf0000000);
+		printf("Loaded %d bytes into SPRAM (bootloaded)\n", nmem);
+		sim.pc = 0xf0000000;
+	} else {
+		int nmem = rv_simulator_load_memory_from_file(&sim, program_filename, FILETYPE_AUTO, 0);
+		printf("Loaded %d bytes into main memory\n", nmem);
+	}
 
-	nmem = rv_simulator_load_memory_from_file(&sim, fontfile, FILETYPE_AUTO, FONTRAM_BASE_ADDR);
+
+
+	int nmem = rv_simulator_load_memory_from_file(&sim, fontfile, FILETYPE_AUTO, FONTRAM_BASE_ADDR);
 	printf("Loaded %d bytes into font RAM\n", nmem);
 
 	pthread_t sdl_thread_handle;
 
-	if (enable_leds | enable_buttons | enable_vga)
+	if (enable_leds | enable_vga)
 		pthread_create(&sdl_thread_handle, NULL, sdl_window_thread_fn, (void*)&sim);
 
 	uint64_t instruction = 0;
@@ -262,7 +263,7 @@ int main(int argc, char** argv) {
 		}
 
 		if (status == -1) {
-			printf("Breakpoint @ PC=%x\n", sim.pc);
+			printf("Breakpoint @ PC=%x, (%lu instructions so far)\n", sim.pc, instruction);
 
 			printf("Press 'c' key to continue, 'r' to print registers, 'm' to print memory, ctrl-C + return to exit.\n");
 			while (!EXIT) {
@@ -295,7 +296,7 @@ int main(int argc, char** argv) {
 	}
 
 	EXIT = true;
-	if (enable_leds | enable_buttons | enable_vga)
+	if (enable_leds | enable_vga)
 		pthread_join(sdl_thread_handle, NULL);
 
 	rv_simulator_deinit(&sim);
