@@ -26,7 +26,7 @@ build/bootloader.hex: build bootloader.S
 	$(OBJCOPY) build/bootloader.elf --hex -o build/bootloader.hex
 
 build/bootloader_v2.hex: build bootloader_v2.c
-	$(COMPILE) -nostdlib -Os -T$(LIBDIR)/map.ld $(LIBDIR)/crt0_minimal.S $(LIBDIR)/soc_core.c $(LIBDIR)/soc_io.c bootloader_v2.c -o build/bootloader_v2.elf
+	$(COMPILE) -nostdlib -Os -T$(LIBDIR)/map_minimal.ld $(LIBDIR)/crt0_minimal.S $(LIBDIR)/soc_core.c $(LIBDIR)/soc_io.c bootloader_v2.c -o build/bootloader_v2.elf
 	riscv32-unknown-elf-size build/bootloader_v2.elf
 	$(OBJCOPY) build/bootloader_v2.elf --hex -o build/bootloader_v2.hex
 

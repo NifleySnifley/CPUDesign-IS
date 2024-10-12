@@ -13,7 +13,7 @@
 `endif
 
 module soc_upduino #(
-    parameter MEMSIZE = 2560
+    parameter MEMSIZE = 256
 ) (
     // System inputs
     input clk12MHz,
