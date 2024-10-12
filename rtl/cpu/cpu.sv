@@ -19,12 +19,12 @@ module cpu (
 
     // Debugging outputs
     output reg instruction_sync,
-    output wire [31:0] dbg_pc,
+    output wire [31:0] dbg_pc
 
     // Interrupt subsystem
-    wire interrupt,
-    wire [30:0] interrupt_cause,
-    wire interrupt_serviced
+    // wire interrupt,
+    // wire [30:0] interrupt_cause,
+    // wire interrupt_serviced
 );
     // Debugging stuff
     // assign instruction_sync = (state == STATE_INST_FETCH) & clk;  // High when instruction finishes
@@ -188,30 +188,30 @@ module cpu (
     wire exec_done = (inst_is_ALU && alu_done) || ((inst_is_load || inst_is_store) && bus_done);
 
     /////////////////////////////// CSRs ///////////////////////////////
-    reg [31:0] mcause;  // Interrupt cause
-    reg [31:0] mtvect;  // Interrupt vector table offset
-    reg [31:0] mepc;  // Interrupt stored PC
-    wire [31:0] interrupt_vector = mtvect + mcause[30:0] * 4;
+    // reg [31:0] mcause;  // Interrupt cause
+    // reg [31:0] mtvect;  // Interrupt vector table offset
+    // reg [31:0] mepc;  // Interrupt stored PC
+    // wire [31:0] interrupt_vector = mtvect + mcause[30:0] * 4;
 
     // Interrupt states:
     // interrupt_requested
     // interrupt_started
     // interrupt_finished
 
-    reg interrupt_previous;
-    wire interrupt_posedge = interrupt & ~interrupt_previous;
-    reg interrupt_begin = 0;
-    reg in_isr = 0;
-    assign interrupt_serviced = (interrupt && (~in_isr)) || interrupt_begin;
+    // reg interrupt_previous;
+    // wire interrupt_posedge = interrupt & ~interrupt_previous;
+    // reg interrupt_begin = 0;
+    // reg in_isr = 0;
+    // assign interrupt_serviced = (interrupt && (~in_isr)) || interrupt_begin;
 
-    always @(posedge clk) begin
-        if (in_isr) interrupt_begin <= 0;
+    // always @(posedge clk) begin
+    //     if (in_isr) interrupt_begin <= 0;
 
-        if (interrupt_posedge) begin
-            // Always MSB of 1 because it's an interrupt!
-            mcause <= {1'b1, interrupt_cause};
-        end
-    end
+    //     if (interrupt_posedge) begin
+    //         // Always MSB of 1 because it's an interrupt!
+    //         mcause <= {1'b1, interrupt_cause};
+    //     end
+    // end
 
     // TODO: Add CSR reading and writing
     always @(posedge clk) begin
@@ -241,16 +241,16 @@ module cpu (
                     // Only for ALU, mem, etc.
                     alu_ready <= 1'b0;
                     // Jump to ISR with vector
-                    if (interrupt_begin) begin
-                        in_isr <= 1'b1;
-                        pc <= interrupt_vector;
-                        mepc <= pc;
-                        state <= STATE_INST_FETCH;
-                    end else if (inst_is_mret) begin
-                        in_isr <= 1'b0;
-                    end else begin
-                        if (exec_done) state <= STATE_WRITEBACK;
-                    end
+                    // if (interrupt_begin) begin
+                    //     in_isr <= 1'b1;
+                    //     pc <= interrupt_vector;
+                    //     mepc <= pc;
+                    //     state <= STATE_INST_FETCH;
+                    // end else if (inst_is_mret) begin
+                    //     in_isr <= 1'b0;
+                    // end else begin
+                    if (exec_done) state <= STATE_WRITEBACK;
+                    // end
                 end
                 state[STATE_WRITEBACK_IDX]: begin
                     pc <= jumping ? pc_next : pc_advanced;

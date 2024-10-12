@@ -4,3 +4,6 @@
 [submodule "relearning/up5k"]
 	path = relearning/up5k
 	url = https://github.com/osresearch/up5k
+[submodule "relearning/chubby75"]
+	path = relearning/chubby75
+	url = https://github.com/q3k/chubby75
