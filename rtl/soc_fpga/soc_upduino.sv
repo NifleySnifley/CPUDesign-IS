@@ -247,13 +247,17 @@ module soc_upduino #(
         .clk_pix
     );
 
+    wire [1:0] vga_red = {2{video_internal}};
+    wire [1:0] vga_green = {2{video_internal}};
+    wire [1:0] vga_blue = {2{video_internal}};
+
     // Special IO for VGA output
     SB_IO #(
         .PIN_TYPE(6'b010100)  // PIN_OUTPUT_REGISTERED
-    ) vga_io[2:0] (
-        .PACKAGE_PIN({hsync, vsync, red_h}),
+    ) vga_io[(2+6)-1:0] (
+        .PACKAGE_PIN({hsync, vsync, red_h, red_l, grn_h, grn_l, blu_h, blu_l}),
         .OUTPUT_CLK(clk_pix),
-        .D_OUT_0({hsync_internal, vsync_internal, video_internal}),
+        .D_OUT_0({hsync_internal, vsync_internal, vga_red, vga_green, vga_blue}),
         .D_OUT_1()
     );
 
