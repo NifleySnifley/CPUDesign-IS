@@ -20,14 +20,8 @@ module cpu (
     // Debugging outputs
     output reg instruction_sync,
     output wire [31:0] dbg_pc
-
-    // Interrupt subsystem
-    // wire interrupt,
-    // wire [30:0] interrupt_cause,
-    // wire interrupt_serviced
 );
     // Debugging stuff
-    // assign instruction_sync = (state == STATE_INST_FETCH) & clk;  // High when instruction finishes
     assign dbg_pc = pc;
 
     // Processor state (one-hot)
@@ -64,19 +58,12 @@ module cpu (
     wire [4:0] rs1 = instruction[19:15];
     wire [4:0] rs2 = instruction[24:20];
 
-    // wire inst_has_rs1 = ~(inst_is_lui || inst_is_auipc || inst_is_jal);
-    // wire inst_has_rs2 = ALU_is_register || inst_is_store || inst_is_branch;
-
     // Immediates
-    wire [31:0] imm_s = {{20{instruction[31]}}, instruction[31:25], instruction[11:7]};
-    wire [31:0] imm_i = {{20{instruction[31]}}, instruction[31:20]};
-    wire [31:0] imm_b = {
-        {20{instruction[31]}}, instruction[7], instruction[30:25], instruction[11:8], 1'b0
-    };
-    wire [31:0] imm_u = {instruction[31:12], 12'b0};
-    wire [31:0] imm_j = {
-        {12{instruction[31]}}, instruction[19:12], instruction[20], instruction[30:21], 1'b0
-    };
+    reg [31:0] imm_s = 0;
+    reg [31:0] imm_i = 0;
+    reg [31:0] imm_b = 0;
+    reg [31:0] imm_u = 0;
+    reg [31:0] imm_j = 0;
 
     wire [2:0] loadstore_size_onehot = 3'b1 << funct3[1:0];
     wire load_signext = ~funct3[2];
@@ -187,33 +174,6 @@ module cpu (
 
     wire exec_done = (inst_is_ALU && alu_done) || ((inst_is_load || inst_is_store) && bus_done);
 
-    /////////////////////////////// CSRs ///////////////////////////////
-    // reg [31:0] mcause;  // Interrupt cause
-    // reg [31:0] mtvect;  // Interrupt vector table offset
-    // reg [31:0] mepc;  // Interrupt stored PC
-    // wire [31:0] interrupt_vector = mtvect + mcause[30:0] * 4;
-
-    // Interrupt states:
-    // interrupt_requested
-    // interrupt_started
-    // interrupt_finished
-
-    // reg interrupt_previous;
-    // wire interrupt_posedge = interrupt & ~interrupt_previous;
-    // reg interrupt_begin = 0;
-    // reg in_isr = 0;
-    // assign interrupt_serviced = (interrupt && (~in_isr)) || interrupt_begin;
-
-    // always @(posedge clk) begin
-    //     if (in_isr) interrupt_begin <= 0;
-
-    //     if (interrupt_posedge) begin
-    //         // Always MSB of 1 because it's an interrupt!
-    //         mcause <= {1'b1, interrupt_cause};
-    //     end
-    // end
-
-    // TODO: Add CSR reading and writing
     always @(posedge clk) begin
         if (rst) begin
             instruction <= 32'b0;
@@ -231,6 +191,24 @@ module cpu (
                     end
                 end
                 state[STATE_DECODE_IDX]: begin
+                    imm_s <= {{20{instruction[31]}}, instruction[31:25], instruction[11:7]};
+                    imm_i <= {{20{instruction[31]}}, instruction[31:20]};
+                    imm_b <= {
+                        {20{instruction[31]}},
+                        instruction[7],
+                        instruction[30:25],
+                        instruction[11:8],
+                        1'b0
+                    };
+                    imm_u <= {instruction[31:12], 12'b0};
+                    imm_j <= {
+                        {12{instruction[31]}},
+                        instruction[19:12],
+                        instruction[20],
+                        instruction[30:21],
+                        1'b0
+                    };
+
                     rs1_value <= registers[rs1];
                     rs2_value <= registers[rs2];
 
@@ -240,17 +218,7 @@ module cpu (
                 state[STATE_EXEC_IDX]: begin
                     // Only for ALU, mem, etc.
                     alu_ready <= 1'b0;
-                    // Jump to ISR with vector
-                    // if (interrupt_begin) begin
-                    //     in_isr <= 1'b1;
-                    //     pc <= interrupt_vector;
-                    //     mepc <= pc;
-                    //     state <= STATE_INST_FETCH;
-                    // end else if (inst_is_mret) begin
-                    //     in_isr <= 1'b0;
-                    // end else begin
                     if (exec_done) state <= STATE_WRITEBACK;
-                    // end
                 end
                 state[STATE_WRITEBACK_IDX]: begin
                     pc <= jumping ? pc_next : pc_advanced;

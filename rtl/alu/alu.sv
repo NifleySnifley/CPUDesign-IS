@@ -41,13 +41,13 @@ module alu (
         {(mul | mulh | mulhsu) & in1[31], $signed(in1)}
     ) * $signed(
         {(mul | mulh) & in2[31], $signed(in2)}
-    );  // Infers DSP Multiplier on FPGA
+    );  // Infers DSP Multiplier on FPGA*/
 
     //////////////////////////////////////// DIVIDER ////////////////////////////////////////
     wire is_division = is_m_extension && (|onehot_funct3[7:4]);
     wire is_division_signed = (onehot_funct3[4] | onehot_funct3[6]);
     reg [63:0] divisor = 0;
-    reg [31:0] remainder = 0; // FIXME: Made a reckless optimization of squishing remainder into 32 bits not 64, should be good and passes tests but need to verify
+    reg [31:0] remainder = 0;
     reg [31:0] quotient;
     reg [5:0] bitctr = 0;
 
@@ -108,6 +108,4 @@ module alu (
             default: out = 32'b0;
         endcase
     end
-    // default: out = 32'b0;
-
 endmodule

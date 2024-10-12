@@ -27,6 +27,8 @@ set_io -nowarn spi_rx 38
 set_io -nowarn spi_tx 28
 
 set_io -nowarn clk12MHz 20
+set_frequency clk12MHz  12
+
 set_io -nowarn reset_n 10
 
 set_io -nowarn gpio0 12
