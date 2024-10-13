@@ -12,7 +12,7 @@ PROGTOOL=iceFUNprog #Upduino: "iceprog -d i:0x0403:0x6014", iceFUN: iceFUNprog
 SYNTHARGS=-dsp
 
 PROJNAME=soc_iceFUN
-SRCFILES=../cpu/cpu.sv ../alu/alu.sv ./$(PROJNAME).sv ../common/memory_spram.sv ../common/memory.sv ../common/bus_hub_4.sv ../common/bus_hub_2.sv ../common/bus_hub_3.sv ../common/bus_hub_5.sv ../fpga/parallel_port.sv ../fpga/spi.sv ../graphics/rtl/bw_textmode_gpu.sv
+SRCFILES=../cpu/cpu.sv ../alu/alu.sv ./$(PROJNAME).sv ../common/memory_spram.sv ../common/memory.sv ../common/bus_hub_4.sv ../common/bus_hub_2.sv ../common/bus_hub_3.sv ../common/bus_hub_5.sv ../fpga/parallel_port.sv ../fpga/spi.sv ../graphics/rtl/bw_textmode_gpu.sv ../graphics/rtl/vga_pll.sv ../graphics/rtl/fontROM.sv ../graphics/rtl/color_textmode_gpu.sv
 TOPNAME=$(PROJNAME)
 PNR_ARGS=--timing-allow-fail --$(DEVICE) --package $(PACKAGE) --json $(BUILDDIR)/$(PROJNAME).json --pcf ./$(PROJNAME).pcf --asc $(BUILDDIR)/$(PROJNAME)_base.asc
 

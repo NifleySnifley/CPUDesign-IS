@@ -231,7 +231,7 @@ module soc_upduino #(
         .locked(pll_locked)
     );
 
-    bw_textmode_gpu #(
+    color_textmode_gpu #(
         .FONTROM_INITFILE("../graphics/spleen8x16.txt")
     ) gpu (
         // CLK for bus domain
@@ -250,13 +250,15 @@ module soc_upduino #(
         // Input clock for video clock generation
         .hsync(hsync_internal),
         .vsync(vsync_internal),
-        .video(video_internal),  // 1-bit video output.
+        .red  (vga_red),
+        .green(vga_green),
+        .blue (vga_blue),
         .clk_pix
     );
 
-    wire [1:0] vga_red = {2{video_internal}};
-    wire [1:0] vga_green = {2{video_internal}};
-    wire [1:0] vga_blue = {2{video_internal}};
+    wire [1:0] vga_red;
+    wire [1:0] vga_green;
+    wire [1:0] vga_blue;
 
     // Special IO for VGA output
     SB_IO #(

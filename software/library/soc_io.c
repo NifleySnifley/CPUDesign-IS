@@ -16,6 +16,9 @@ void printchar(char c) {
 		stdout_col = 0; // Start of line
 		stdout_row = (stdout_row + 1) % SCREENBUFFER_ROWS;
 	} else {
+#if (COLOR_SUPPORTED)
+		COLORBUFFER_W[stdout_idx] = COLOR_FG(0b111111);
+#endif
 		SCREENBUFFER_B[stdout_idx] = c;
 		stdout_col++;
 	}

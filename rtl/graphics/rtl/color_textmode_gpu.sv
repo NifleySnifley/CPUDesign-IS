@@ -1,6 +1,6 @@
-module bw_textmode_gpu #(
+module color_textmode_gpu #(
     parameter SCREENBUFFER_BASE_ADDR = 32'h10000,
-    parameter FONTROM_INITFILE = ""  // spleen8x16.txt
+    parameter FONTROM_INITFILE = ""
     // parameter FONTRAM_BASE_ADDR = 32'h10000
 ) (
     // CLK for bus domain
@@ -17,10 +17,12 @@ module bw_textmode_gpu #(
     output wire active,
 
     // Input clock for video clock generation
-    output reg  hsync,
-    output reg  vsync,
-    output wire video,   // 1-bit video output.
-    input  wire clk_pix
+    input wire clk_pix,
+    output reg hsync,
+    output reg vsync,
+    output wire [1:0] red,
+    output wire [1:0] green,
+    output wire [1:0] blue
 );
     localparam FONT_W = 8;
     localparam FONT_H = 16;
@@ -30,7 +32,29 @@ module bw_textmode_gpu #(
     localparam COLS = SCREEN_W / FONT_W;
 
     localparam SB_NWORDS = ((ROWS * COLS) / 4);
+
+    localparam COLOR_LENGTH = 6;
+    localparam CB_NWORDS = (ROWS * COLS);
+
     localparam SB_ADDRBITS = $clog2(SB_NWORDS);
+    localparam CB_ADDRBITS = $clog2(CB_NWORDS);
+    localparam ADDRBITS = $clog2(SB_NWORDS + CB_NWORDS);
+
+
+    // {background, foreground};
+    reg [COLOR_LENGTH*2-1:0] colorbuffer[CB_NWORDS-1:0];
+
+    genvar i;
+    generate
+        for (i = 0; i < CB_NWORDS; i = i + 1) begin
+            initial begin
+                colorbuffer[i] = 12'b000000111111;
+            end
+        end
+    endgenerate
+
+
+
 
     // Character screenbuffer NOTE: This is comprised of 32-bit words!
     reg [31:0] screenbuffer[SB_NWORDS-1:0];
@@ -59,9 +83,6 @@ module bw_textmode_gpu #(
     always @(posedge clk_pix) begin
         {rst_clk_pix, rst_clk_pipe} <= {rst_clk_pipe, rst};
     end
-
-
-
 
     // Video generation signals
     reg [9:0] x;
@@ -126,7 +147,14 @@ module bw_textmode_gpu #(
     wire [3:0] char_row = y[3:0];  // 0-15
     wire [2:0] char_col = x[2:0];  // 0-7
 
-    assign video = (~blanking) & current_char_bitmap[7-char_col];
+    wire video = (~blanking) & current_char_bitmap[7-char_col];
+    wire [COLOR_LENGTH*2-1:0] current_color = colorbuffer[screenbuffer_index];
+    wire [COLOR_LENGTH-1:0] fg_color = current_color[COLOR_LENGTH-1:0];
+    wire [COLOR_LENGTH-1:0] bg_color = current_color[COLOR_LENGTH*2-1:COLOR_LENGTH];
+
+    assign red   = blanking ? '0 : (video ? fg_color[1:0] : bg_color[1:0]);
+    assign green = blanking ? '0 : (video ? fg_color[3:2] : bg_color[3:2]);
+    assign blue  = blanking ? '0 : (video ? fg_color[5:4] : bg_color[5:4]);
 
     reg [31:0] char_reg;
 
@@ -151,20 +179,30 @@ module bw_textmode_gpu #(
 
     // BUS ACCESS of SCREENBUFFER!
     wire [31:0] local_addr = addr - SCREENBUFFER_BASE_ADDR;
-    reg [SB_ADDRBITS-1:0] xact_addr;
+    reg [ADDRBITS-1:0] xact_addr;
 
     // Don't lock up when attempted read, just give zeros
     assign ready = ren | (word_addr == xact_addr);
 
-    wire [SB_ADDRBITS-1:0] word_addr = local_addr[1+SB_ADDRBITS:2];
-    assign active = (addr >= SCREENBUFFER_BASE_ADDR) && (addr < (SCREENBUFFER_BASE_ADDR + SB_NWORDS*4));
+    wire [ADDRBITS-1:0] word_addr = local_addr[1+ADDRBITS:2];
+    wire [ADDRBITS-1:0] color_addr = word_addr - SB_NWORDS;
+    assign active = (addr >= SCREENBUFFER_BASE_ADDR) && (addr < (SCREENBUFFER_BASE_ADDR + (SB_NWORDS+CB_NWORDS)*4));
 
     always @(posedge clk) begin
         if (wen & active) begin
-            if (wmask[0]) screenbuffer[word_addr][7:0] <= wdata[7:0];
-            if (wmask[1]) screenbuffer[word_addr][15:8] <= wdata[15:8];
-            if (wmask[2]) screenbuffer[word_addr][23:16] <= wdata[23:16];
-            if (wmask[3]) screenbuffer[word_addr][31:24] <= wdata[31:24];
+            if ((word_addr < SB_NWORDS)) begin
+                if (wmask[0]) screenbuffer[word_addr[SB_ADDRBITS-1:0]][7:0] <= wdata[7:0];
+                if (wmask[1]) screenbuffer[word_addr[SB_ADDRBITS-1:0]][15:8] <= wdata[15:8];
+                if (wmask[2]) screenbuffer[word_addr[SB_ADDRBITS-1:0]][23:16] <= wdata[23:16];
+                if (wmask[3]) screenbuffer[word_addr[SB_ADDRBITS-1:0]][31:24] <= wdata[31:24];
+            end else begin
+                // if (wmask[0]) screenbuffer[word_addr[SB_ADDRBITS-1:0]][7:0] <= wdata[7:0];
+                // if (wmask[1]) screenbuffer[word_addr[SB_ADDRBITS-1:0]][15:8] <= wdata[15:8];
+                // if (wmask[2]) screenbuffer[word_addr[SB_ADDRBITS-1:0]][23:16] <= wdata[23:16];
+                // if (wmask[3]) screenbuffer[word_addr[SB_ADDRBITS-1:0]][31:24] <= wdata[31:24];
+                if (wmask[0]) colorbuffer[color_addr[CB_ADDRBITS-1:0]][7:0] <= wdata[7:0];
+                if (wmask[1]) colorbuffer[color_addr[CB_ADDRBITS-1:0]][11:8] <= wdata[11:8];
+            end
         end
 
         if (wen) xact_addr <= word_addr;
