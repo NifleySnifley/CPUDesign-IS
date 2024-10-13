@@ -25,17 +25,19 @@ module cpu (
     assign dbg_pc = pc;
 
     // Processor state (one-hot)
-    localparam STATE_INST_FETCH = 4'b0001;
+    localparam STATE_INST_FETCH = 5'b00001;
     localparam STATE_INST_FETCH_IDX = 0;
-    localparam STATE_DECODE = 4'b0010;
+    localparam STATE_DECODE = 5'b00010;
     localparam STATE_DECODE_IDX = 1;
-    localparam STATE_EXEC = 4'b0100;
+    localparam STATE_EXEC = 5'b00100;
     localparam STATE_EXEC_IDX = 2;
-    localparam STATE_WRITEBACK = 4'b1000;
+    localparam STATE_WRITEBACK = 5'b01000;
     localparam STATE_WRITEBACK_IDX = 3;
+    localparam STATE_PREDECODE = 5'b10000;
+    localparam STATE_PREDECODE_IDX = 4;
 
     (* onehot *)
-    reg [ 3:0] state;
+    reg [ 4:0] state;
 
     // Register file
     (* no_rw_check *)
@@ -51,12 +53,12 @@ module cpu (
     // Current instruction (@PC)
     reg [31:0] instruction = 0;
 
-    wire [4:0] opcode = instruction[6:2];
+    reg [4:0] opcode = 0;
     wire [1:0] instruction_length = instruction[1:0];  // NOTE: MUST be 2'b11 for rv32i
     // Registers
     wire [4:0] rd = instruction[11:7];
-    wire [4:0] rs1 = instruction[19:15];
-    wire [4:0] rs2 = instruction[24:20];
+    // wire [4:0] rs1 = instruction[19:15];
+    // wire [4:0] rs2 = instruction[24:20];
 
     // Immediates
     reg [31:0] imm_s = 0;
@@ -65,8 +67,8 @@ module cpu (
     reg [31:0] imm_u = 0;
     reg [31:0] imm_j = 0;
 
-    wire [2:0] loadstore_size_onehot = 3'b1 << funct3[1:0];
-    wire load_signext = ~funct3[2];
+    reg [2:0] loadstore_size_onehot;
+    reg load_signext;
     // TODO: Mret in exec state go back to mepc
 
     // Instruction types
@@ -81,17 +83,15 @@ module cpu (
     wire inst_is_auipc = opcode == 5'b00101;
     wire inst_is_system = opcode == 5'b11100;
 
-    wire inst_is_csr = inst_is_system && (|funct3);
-    wire inst_is_mret = (rd == 0) && (funct3 == 0) && (rs2 == 5'b00010) && (rs1 == 0);
+    // wire inst_is_csr = inst_is_system && (|funct3);
+    // wire inst_is_mret = (rd == 0) && (funct3 == 0) && (rs2 == 5'b00010) && (rs1 == 0);
 
     ////////////// ALU STUFF //////////////
-    wire [2:0] funct3 = instruction[14:12];
-    // HACK: funct7 only NEEDS to be 0 when adding immediates AFAIK
-    // Because the only instructions that use funct7 are shifts (mask the funct7 bits of the immediate) and add (0x20 for sub on REGISTER ONLY)
-    wire [6:0] funct7 = instruction[31:25];
+    reg [2:0] funct3 = 0;
+    reg [6:0] funct7;
 
-    wire [31:0] alu_op1 = rs1_value;
-    wire [31:0] alu_op2 = ALU_is_register ? rs2_value : imm_i;
+    reg [31:0] alu_op1 = 0;
+    reg [31:0] alu_op2 = 0;
     wire [31:0] alu_out;
     wire alu_done;
     reg alu_ready;
@@ -117,13 +117,7 @@ module cpu (
     (* onehot *)
     wire [3:0] branch_cond_type_onehot = 3'b1 << funct3[2:1];  // Equal, LT, LT(U)
     wire branch_cond_inverted = funct3[0];  // Flip output
-    reg branch_test = (branch_cond_type_onehot[0] ? rs1_value == rs2_value : 1'b0) |
-    (branch_cond_type_onehot[2] ? $signed(
-        rs1_value
-    ) < $signed(
-        rs2_value
-    ) : 1'b0) | (branch_cond_type_onehot[3] ? rs1_value < rs2_value : 1'b0);  // Lt (U)
-    wire branch_cond = branch_test ^ branch_cond_inverted;
+    reg branch_cond = 0;
 
     ////////////// PC STUFF //////////////
     wire [31:0] pc_advanced = pc + 4;
@@ -132,10 +126,10 @@ module cpu (
     wire [31:0] pc_op2 = (inst_is_branch ? imm_b : 0) | (inst_is_jal ? imm_j : 0) | (inst_is_jalr ? imm_i : 0);
     wire [31:0] pc_next = (~jumping) ? pc_advanced : (pc_op1 + pc_op2);
 
-    wire [31:0] loadstore_addr = rs1_value + (inst_is_store ? imm_s : imm_i);
+    reg [31:0] loadstore_addr = 0;
+    wire [1:0] mem_loadstore_offset = loadstore_addr[1:0];
 
     assign bus_addr = (state[STATE_INST_FETCH_IDX]) ? pc : ((inst_is_store || inst_is_load) ? loadstore_addr : pc);
-    wire [1:0] mem_loadstore_offset = loadstore_addr[1:0];
     // TODO: Actually use this read strobe
     assign bus_ren = inst_is_load && state[STATE_EXEC_IDX] || state[STATE_INST_FETCH_IDX];  // Always for just mem reads!
     assign bus_wen = inst_is_store && state[STATE_EXEC_IDX];
@@ -185,32 +179,59 @@ module cpu (
                     instruction_sync <= 1'b0;
                     if (bus_done) begin
                         instruction <= bus_rdata;
+
+                        // Fetch immediates
+                        imm_s <= {{20{bus_rdata[31]}}, bus_rdata[31:25], bus_rdata[11:7]};
+                        imm_i <= {{20{bus_rdata[31]}}, bus_rdata[31:20]};
+                        imm_b <= {
+                            {20{bus_rdata[31]}},
+                            bus_rdata[7],
+                            bus_rdata[30:25],
+                            bus_rdata[11:8],
+                            1'b0
+                        };
+                        imm_u <= {bus_rdata[31:12], 12'b0};
+                        imm_j <= {
+                            {12{bus_rdata[31]}},
+                            bus_rdata[19:12],
+                            bus_rdata[20],
+                            bus_rdata[30:21],
+                            1'b0
+                        };
+
+                        // Fetch operators
+                        funct3 <= bus_rdata[14:12];  // funct3
+                        funct7 <= bus_rdata[31:25];  // funct7
+                        opcode <= bus_rdata[6:2];  // Opcode
+
+                        // Decode load parameters
+                        load_signext <= ~bus_rdata[14];  // funct3[2]
+                        loadstore_size_onehot <= 3'b1 << bus_rdata[13:12];  // funct3[1:0]
+
+
+                        // Load register values
+                        rs1_value <= registers[bus_rdata[19:15]];  // rs1
+                        rs2_value <= registers[bus_rdata[24:20]];  // rs2
+
                         state <= STATE_DECODE;
                     end else begin
                         state <= STATE_INST_FETCH;
                     end
                 end
                 state[STATE_DECODE_IDX]: begin
-                    imm_s <= {{20{instruction[31]}}, instruction[31:25], instruction[11:7]};
-                    imm_i <= {{20{instruction[31]}}, instruction[31:20]};
-                    imm_b <= {
-                        {20{instruction[31]}},
-                        instruction[7],
-                        instruction[30:25],
-                        instruction[11:8],
-                        1'b0
-                    };
-                    imm_u <= {instruction[31:12], 12'b0};
-                    imm_j <= {
-                        {12{instruction[31]}},
-                        instruction[19:12],
-                        instruction[20],
-                        instruction[30:21],
-                        1'b0
-                    };
+                    alu_op1 <= rs1_value;
+                    alu_op2 <= ALU_is_register ? rs2_value : imm_i;
+                    loadstore_addr <= rs1_value + (inst_is_store ? imm_s : imm_i);
 
-                    rs1_value <= registers[rs1];
-                    rs2_value <= registers[rs2];
+                    branch_cond <= ((branch_cond_type_onehot[0] ? rs1_value == rs2_value : 1'b0) |
+                    (branch_cond_type_onehot[2] ? $signed(
+                        rs1_value
+                    ) < $signed(
+                        rs2_value
+                    ) : 1'b0) | (branch_cond_type_onehot[3] ? rs1_value < rs2_value : 1'b0)) ^
+                        branch_cond_inverted;  // Lt (U)
+
+
 
                     state <= inst_is_exec ? STATE_EXEC : STATE_WRITEBACK;
                     alu_ready <= 1'b1;

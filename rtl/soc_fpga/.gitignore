@@ -4,3 +4,4 @@
 **/*.dblite
 /build
 *.dot
+*.txt
