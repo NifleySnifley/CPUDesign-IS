@@ -231,8 +231,6 @@ module cpu (
                     ) : 1'b0) | (branch_cond_type_onehot[3] ? rs1_value < rs2_value : 1'b0)) ^
                         branch_cond_inverted;  // Lt (U)
 
-
-
                     state <= inst_is_exec ? STATE_EXEC : STATE_WRITEBACK;
                     alu_ready <= 1'b1;
                 end

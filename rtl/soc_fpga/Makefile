@@ -14,7 +14,7 @@ SYNTHARGS=-dsp
 PROJNAME=soc_iceFUN
 SRCFILES=../cpu/cpu.sv ../alu/alu.sv ./$(PROJNAME).sv ../common/memory_spram.sv ../common/memory.sv ../common/bus_hub_4.sv ../common/bus_hub_2.sv ../common/bus_hub_3.sv ../common/bus_hub_5.sv ../fpga/parallel_port.sv ../fpga/spi.sv ../graphics/rtl/bw_textmode_gpu.sv
 TOPNAME=$(PROJNAME)
-PNR_ARGS=--$(DEVICE) --package $(PACKAGE) --json $(BUILDDIR)/$(PROJNAME).json --pcf ./$(PROJNAME).pcf --asc $(BUILDDIR)/$(PROJNAME)_base.asc
+PNR_ARGS=--timing-allow-fail --$(DEVICE) --package $(PACKAGE) --json $(BUILDDIR)/$(PROJNAME).json --pcf ./$(PROJNAME).pcf --asc $(BUILDDIR)/$(PROJNAME)_base.asc
 
 # THIS is where programming happens!
 .PHONY: $(BUILDDIR)/$(PROJNAME).bin

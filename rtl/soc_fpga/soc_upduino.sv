@@ -69,7 +69,7 @@ module soc_upduino #(
     output blu_h
 );
     assign fpga_flash_spi_cs = 1'b1;
-    wire core_clk = clk12MHz;
+    wire core_clk = clk_pix;  //clk12MHz;
 
     // RESET BUTTON
     wire rst_press;
@@ -221,7 +221,15 @@ module soc_upduino #(
     wire hsync_internal;
     wire vsync_internal;
     wire video_internal;
+
+    // 25.175 (ish) MHz
     wire clk_pix;
+    wire pll_locked;
+    vga_pll pll (
+        .clock_in(clk12MHz),
+        .clock_out(clk_pix),
+        .locked(pll_locked)
+    );
 
     bw_textmode_gpu #(
         .FONTROM_INITFILE("../graphics/spleen8x16.txt")
@@ -240,7 +248,6 @@ module soc_upduino #(
         .active(gpu_active),
 
         // Input clock for video clock generation
-        .clk_12MHz(clk12MHz),
         .hsync(hsync_internal),
         .vsync(vsync_internal),
         .video(video_internal),  // 1-bit video output.

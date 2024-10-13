@@ -24,7 +24,7 @@ module bw_textmode_gpu #(
     output reg hsync,
     output reg vsync,
     output wire video,  // 1-bit video output.
-    output wire clk_pix
+    input wire clk_pix
 );
     localparam FONT_W = 8;
     localparam FONT_H = 16;
@@ -38,17 +38,6 @@ module bw_textmode_gpu #(
 
     // Character screenbuffer NOTE: This is comprised of 32-bit words!
     reg [31:0] screenbuffer[SB_NWORDS-1:0];
-
-    // 25.175 (ish) MHz
-    // wire clk_pix;
-    wire pll_locked;
-    vga_pll pll (
-        .clock_in(clk_12MHz),
-        .clock_out(clk_pix),
-        .locked(pll_locked)
-    );
-
-
 
     // Font ROM instance for getting character data
     fontROM #(
