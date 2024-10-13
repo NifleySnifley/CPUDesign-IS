@@ -5,7 +5,7 @@ LIB_SOURCES=$(LIBDIR)/crt0.S $(LIBDIR)/soc_core.c $(LIBDIR)/soc_io.c
 COMPILE=riscv32-unknown-elf-gcc -I$(LIBDIR) -g -march=rv32im -mabi=ilp32  -Wall -nostartfiles  -ffunction-sections -fdata-sections -mstrict-align -Wl,--gc-sections -ffp-contract=off -lm -lc -lgcc $(LIB_SOURCES)
 
 .PHONY: all
-all: build/icefun_main.hex build/upduino_main.hex build/graphics_test.hex build/cgol.hex build/flash_test.hex
+all: build/icefun_main.hex build/upduino_main.hex build/graphics_test.hex build/cgol.hex build/flash_test.hex build/ecp5_test.hex
 
 .PHONY: sim
 sim: build/icefun_main.hex
@@ -25,6 +25,11 @@ build/icefun_main.hex: icefun_main.c build
 build/upduino_main.hex: upduino_main.c build
 	$(COMPILE) -Os  -T$(LIBDIR)/map_spram.ld upduino_main.c -o build/upduino_main.elf
 	$(OBJCOPY) build/upduino_main.elf --hex -o build/upduino_main.hex
+	
+.PHONY: build/ecp5_test.hex
+build/ecp5_test.hex: ecp5_test.c build
+	$(COMPILE) -Os -DF_CPU=50000000 -T$(LIBDIR)/map_ecp5.ld ecp5_test.c -o build/ecp5_test.elf
+	$(OBJCOPY) build/ecp5_test.elf --hex -o build/ecp5_test.hex
 
 .PHONY: build/cgol.hex
 build/cgol.hex: cgol.c build
