@@ -16,7 +16,9 @@
 		"memory.h": "c",
 		"typeinfo": "c",
 		"stdint.h": "c",
-		"cstdint": "c"
+		"cstdint": "c",
+		"soc_io.h": "c",
+		"soc_core.h": "c"
 	},
 	// "workbench.colorTheme": "Xcode Default (Light)"
 }

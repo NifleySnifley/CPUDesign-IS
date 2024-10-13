@@ -23,6 +23,8 @@
 #define SCREEN_COLS (SCREEN_WIDTH/FONT_WIDTH)
 #define SCREENBUFFER_BASE_ADDR 0x10000
 #define SCREENBUFFER_SIZE_B (SCREEN_ROWS*SCREEN_COLS)
+#define COLORBUFFER_BASE_ADDR (SCREENBUFFER_BASE_ADDR + SCREENBUFFER_SIZE_B)
+#define COLORBUFFER_SIZE_B (SCREEN_ROWS*SCREEN_COLS * 4)
 #define FONTRAM_BASE_ADDR 0x20000
 #define FONTRAM_SIZE_B (256*16)
 
@@ -40,6 +42,13 @@ void set_pixel(SDL_Surface* surface, int x, int y, Uint32 pixel) {
 		+ x * surface->format->BytesPerPixel);
 	*target_pixel = pixel;
 }
+
+typedef union argb32 {
+	struct {
+		uint8_t b, g, r, a;
+	};
+	uint32_t value;
+} rgba32;
 
 void* sdl_window_thread_fn(void* arg) {
 	rv_simulator_t* sim = (rv_simulator_t*)arg;
@@ -139,7 +148,26 @@ void* sdl_window_thread_fn(void* arg) {
 				for (int r = 0; r < FONT_HEIGHT; ++r) {
 					uint8_t rowbin = rv_simulator_read_byte(sim, FONTRAM_BASE_ADDR + FONT_HEIGHT * ch + r);
 					for (int c = 0; c < FONT_WIDTH; ++c) {
-						set_pixel(character_bitmap, c, r, rowbin & (0x80 >> c) ? 0xFFFFFFFF : 0xFF000000);
+						int col_addr = COLORBUFFER_BASE_ADDR + idx * 4;
+						uint16_t color = 0; // White FG, black BG
+						color |= rv_simulator_read_byte(sim, col_addr + 0);
+						color |= rv_simulator_read_byte(sim, col_addr + 1) << 8;
+
+						uint8_t color_fg = (color & 0x3F);
+						uint8_t color_bg = ((color >> 6) & 0x3F);
+						rgba32 fg = {
+							.a = 0xFF,
+							.r = ((color_fg >> 0) & 0b11) * 85,
+							.g = ((color_fg >> 2) & 0b11) * 85,
+							.b = ((color_fg >> 4) & 0b11) * 85,
+						};
+						rgba32 bg = {
+							.a = 0xFF,
+							.r = ((color_bg >> 0) & 0b11) * 85,
+							.g = ((color_bg >> 2) & 0b11) * 85,
+							.b = ((color_bg >> 4) & 0b11) * 85,
+						};
+						set_pixel(character_bitmap, c, r, rowbin & (0x80 >> c) ? fg.value : bg.value);
 					}
 				}
 
@@ -213,7 +241,15 @@ int main(int argc, char** argv) {
 	rv_simulator_segmented_memory_add_segment(memory, 0xf000, 4, "Parallel IO", false);
 	rv_simulator_segmented_memory_add_segment(memory, 0xf0000000, 131072, "SPRAM", false);
 	rv_simulator_segmented_memory_add_segment(memory, SCREENBUFFER_BASE_ADDR, SCREENBUFFER_SIZE_B, "Character Screenbuffer", false);
+	rv_simulator_segmented_memory_add_segment(memory, COLORBUFFER_BASE_ADDR, COLORBUFFER_SIZE_B, "Character Colorbuffer", false);
 	rv_simulator_segmented_memory_add_segment(memory, FONTRAM_BASE_ADDR, FONTRAM_SIZE_B, "Font RAM", false);
+
+	for (int i = 0; i < SCREEN_ROWS * SCREEN_COLS;++i) {
+		int addr = COLORBUFFER_BASE_ADDR + i * 4;
+		uint16_t color = 0b000000111111; // White FG, black BG
+		rv_simulator_write_byte(&sim, addr + 0, color & 0x3F);
+		rv_simulator_write_byte(&sim, addr + 1, (color >> 6) & 0x3F);
+	}
 
 	if (emulate_bootloader) {
 		int nmem = rv_simulator_load_memory_from_file(&sim, program_filename, FILETYPE_AUTO, 0xf0000000);
@@ -223,8 +259,6 @@ int main(int argc, char** argv) {
 		int nmem = rv_simulator_load_memory_from_file(&sim, program_filename, FILETYPE_AUTO, 0);
 		printf("Loaded %d bytes into main memory\n", nmem);
 	}
-
-
 
 	int nmem = rv_simulator_load_memory_from_file(&sim, fontfile, FILETYPE_AUTO, FONTRAM_BASE_ADDR);
 	printf("Loaded %d bytes into font RAM\n", nmem);

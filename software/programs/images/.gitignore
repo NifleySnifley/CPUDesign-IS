@@ -1,0 +1,6 @@
+*.png
+*.jpeg
+*.tif
+*.tiff
+*.txt
+/build
