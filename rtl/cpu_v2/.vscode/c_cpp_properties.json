@@ -1,0 +1,23 @@
+{
+    "configurations": [
+        {
+            "name": "Verilator",
+            "compilerPath": "/bin/gcc",
+            "compilerArgs": [
+                "-cc"
+            ],
+            "includePath": [
+                // "${workspaceFolder}/**",
+                "/usr/include",
+                "/usr/local/include",
+                "/usr/share/verilator/include",
+                "/opt/oss-cad-suite/share/verilator/include",
+                // "/usr/share/verilator/include",
+                "/usr/include/linux"
+            ],
+            "cStandard": "c11",
+            "cppStandard": "c++17"
+        }
+    ],
+    "version": 4
+}

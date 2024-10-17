@@ -18,7 +18,8 @@
 		"stdint.h": "c",
 		"cstdint": "c",
 		"soc_io.h": "c",
-		"soc_core.h": "c"
+		"soc_core.h": "c",
+		"new": "cpp"
 	},
 	// "workbench.colorTheme": "Xcode Default (Light)"
 }

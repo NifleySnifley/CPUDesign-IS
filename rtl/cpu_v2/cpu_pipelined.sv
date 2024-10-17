@@ -35,32 +35,37 @@ module cpu_pipelined #(
 
     always @(posedge clk) begin
         if (DE_open && ~unsafe_executing) begin
-            DE_instruction <= progMEM[FE_pc[PROGROM_ADDRBITS-1:0]];
+            DE_instruction <= progMEM[FE_pc[PROGROM_ADDRBITS+1:2]];
             FE_pc <= WB_pc_unsafe ? WB_jump_pc : FE_pc + 4;
 
             DE_pc <= FE_pc;
             DE_valid <= 1'b1;
         end else begin
-            DE_valid <= 1'b0;
+            DE_valid <= ~unsafe_executing;
         end
     end
 
     // DECODE
-    wire DE_open = ~DE_hazard;
+    wire DE_open = EX_open & ~DE_hazard;
     // wire DE_flush = EX_flush;
     reg [31:0] DE_pc = 0;
     reg [31:0] DE_instruction;
     wire [4:0] DE_opcode = DE_instruction[6:2];
     reg DE_valid = 0;
     wire DE_pc_unsafe = DE_opcode[4];
+    // wire DE_instruction_valid = DE_instruction[1:0] == 2'b11;
 
     wire [4:0] DE_rs1_index = DE_instruction[19:15];
     wire [4:0] DE_rs2_index = DE_instruction[24:20];
-    // Detect hazard (dependency) of the current instruction and the instructions in WB and EX.
-    wire DE_hazard = (EX_rd_idx == DE_rs1_index) || (EX_rd_idx == DE_rs2_index) || (WB_rd_idx == DE_rs1_index) || (WB_rd_idx == DE_rs2_index);
+
+    // Detect hazard (dependency) of the current instruction to decode and active instructions in WB and EX.
+    wire DE_has_rs1 = ~((DE_opcode == 5'b11011) || (DE_opcode == 5'b00101) || (DE_opcode == 5'b11001));
+    wire DE_has_rs2 = DE_has_rs1 && ((DE_opcode == 5'b01100) || (DE_opcode == 5'b01000) || (DE_opcode == 5'b11000));
+    wire DE_hazard = DE_has_rs1 && (((EX_rd_idx == DE_rs1_index)&&EX_valid || (WB_rd_idx == DE_rs1_index)&&WB_valid) && (DE_rs1_index != 0)) ||
+                     DE_has_rs2 && (((EX_rd_idx == DE_rs2_index)&&EX_valid || (WB_rd_idx == DE_rs2_index)&&WB_valid) && (DE_rs2_index != 0));
 
     always @(posedge clk) begin
-        if (EX_open & DE_valid) begin
+        if (EX_open & DE_valid & ~DE_hazard) begin
             // Load into execute stage
             EX_ALU_is_register <= DE_opcode == 5'b01100;
             EX_inst_is_ALU <= (DE_opcode == 5'b01100) || (DE_opcode == 5'b00100);
@@ -73,6 +78,7 @@ module cpu_pipelined #(
             EX_inst_is_auipc <= DE_opcode == 5'b00101;
             EX_inst_is_system <= DE_opcode == 5'b11100;
 
+            // TODO: Implement result forwarding here (take from before writeback stage)
             EX_rs1 <= registers[DE_rs1_index];
             EX_rs2 <= registers[DE_rs2_index];
 
@@ -96,14 +102,18 @@ module cpu_pipelined #(
                 1'b0
             };
 
+            EX_instruction <= DE_instruction;
+
             EX_begin <= 1'b1;
-            EX_valid <= 1'b1;
+            // EX_valid <= 1'b1;
             EX_pc_unsafe <= DE_pc_unsafe;
             EX_pc <= DE_pc;
         end else begin
             EX_begin <= 1'b0;
-            EX_valid <= 1'b0;
+            // EX_valid <= 1'b1;
         end
+
+        if (EX_open) EX_valid <= DE_valid & ~DE_hazard & (DE_instruction[1:0] == 2'b11);
     end
 
     // EXECUTE
@@ -157,7 +167,7 @@ module cpu_pipelined #(
     alu alu0 (
         .in1(alu_op1),
         .in2(alu_op2),
-        .is_imm(~EX_ALU_is_register),
+        .is_imm(EX_inst_is_ALU && ~EX_ALU_is_register),
         .out(alu_out),
         .ready(EX_begin),
         .clk,
@@ -170,7 +180,8 @@ module cpu_pipelined #(
     reg EX_waiting = 0;
     // TODO: Implement proper bus, instead of single-cycle local stores
     // ((EX_inst_is_load || EX_inst_is_store) & bus_done)
-    wire EX_done = (EX_inst_is_ALU & alu_done) || (EX_inst_is_load || EX_inst_is_store || EX_inst_is_auipc || EX_inst_is_branch || EX_inst_is_jal || EX_inst_is_jalr || EX_inst_is_system || EX_inst_is_lui);
+
+    wire EX_done = (~EX_valid) || (EX_inst_is_ALU & alu_done) || ((EX_inst_is_load && bus_done) || (EX_inst_is_store && bus_done) || EX_inst_is_auipc || EX_inst_is_branch || EX_inst_is_jal || EX_inst_is_jalr || EX_inst_is_system || EX_inst_is_lui);
     wire EX_has_writeback = ~(EX_inst_is_branch || EX_inst_is_store || EX_inst_is_system);
 
     always @(posedge clk) begin
@@ -202,13 +213,15 @@ module cpu_pipelined #(
         end
     end
 
-    // MEMORY
+    ////////////////////////// SIMULATED BUS //////////////////////////
 
     wire [31:0] loadstore_addr = EX_rs1 + (EX_inst_is_store ? EX_imm_s : EX_imm_i);
     wire [29:0] loadstore_word_addr = loadstore_addr[31:2];
-    wire [ 1:0] mem_loadstore_offset = loadstore_addr[1:0];
+    wire [1:0] mem_loadstore_offset = loadstore_addr[1:0];
 
-    reg  [31:0] bus_rdata;
+    reg [31:0] bus_rdata;
+    reg [31:0] bus_xact_addr = 0;
+    wire bus_done = bus_xact_addr == {bus_ren, bus_wen, loadstore_word_addr};
     always @(posedge clk) begin
         if (bus_wen) begin
             if (bus_wmask[0]) ramMEM[loadstore_word_addr[RAM_ADDRBITS-1:0]][7:0] <= bus_wdata[7:0];
@@ -218,19 +231,18 @@ module cpu_pipelined #(
                 ramMEM[loadstore_word_addr[RAM_ADDRBITS-1:0]][23:16] <= bus_wdata[23:16];
             if (bus_wmask[3])
                 ramMEM[loadstore_word_addr[RAM_ADDRBITS-1:0]][31:24] <= bus_wdata[31:24];
-            bus_rdata <= bus_wdata;
+            bus_xact_addr <= {bus_ren, bus_wen, loadstore_word_addr};
+            // bus_rdata <= bus_wdata;
         end else if (bus_ren) begin
             bus_rdata <= ramMEM[loadstore_word_addr[RAM_ADDRBITS-1:0]];
+            bus_xact_addr <= {bus_ren, bus_wen, loadstore_word_addr};
         end
     end
 
-    // assign bus_addr = (state[STATE_INST_FETCH_IDX]) ? pc : ((inst_is_store || inst_is_load) ? loadstore_addr : pc);
-    // // TODO: Actually use this read strobe
-    wire bus_ren = EX_inst_is_load;
-    wire bus_wen = EX_inst_is_store;
+    wire bus_ren = EX_inst_is_load && EX_valid;
+    wire bus_wen = EX_inst_is_store && EX_valid;
 
-    // // Bytewise shifting for write alignment bytes and half
-    // // FIXME: This will can pottentially cause partial/scrambled words to be written if unaligned accesses are attempted with words/halfs
+    // Bytewise shifting for write alignment bytes and half
     wire [31:0] bus_wdata = {
         mem_loadstore_offset[0] ? EX_rs2[7:0] : mem_loadstore_offset[1] ? EX_rs2[15:8] : EX_rs2[31:24],
         mem_loadstore_offset[1] ? EX_rs2[7:0] : EX_rs2[23:16],
@@ -238,7 +250,7 @@ module cpu_pipelined #(
         EX_rs2[7:0]
     };
 
-    wire [2:0] loadstore_size_onehot = 3'b1 << bus_rdata[13:12];  // funct3[1:
+    wire [2:0] loadstore_size_onehot = 3'b1 << EX_funct3[1:0];
     wire load_signext = ~bus_rdata[14];  // funct3[2]
 
     wire[3:0] bus_wmask = (loadstore_size_onehot[2] ? 4'b1111 : 0) | 
