@@ -192,12 +192,12 @@ int main(int argc, char** argv, char** env) {
     rv_simulator_t simulator;
     constexpr uint32_t memsize_words = (sizeof(dut->rootp->cpu_pl_soc__DOT__core0__DOT__progMEM.m_storage)) / 4;
 
-    constexpr uint32_t spram_baseaddr = 0xf0000000;
+    constexpr uint32_t spram_baseaddr = 0x00000000;
     constexpr uint32_t spram_words = 32768;
 
     rv_simulator_init(&simulator);
     rv_simulator_segmented_memory_t* sim_mem = rv_simulator_init_segmented_memory(&simulator);
-    rv_simulator_segmented_memory_add_segment(sim_mem, 0, memsize_words * 4, "progROM", false);
+    // rv_simulator_segmented_memory_add_segment(sim_mem, 0, memsize_words * 4, "progROM", false);
     if (spram) rv_simulator_segmented_memory_add_segment(sim_mem, spram_baseaddr, spram_words * 4, "SPRAM", false);
 
     // simulator.instr_trace = sim_tracefn;
@@ -213,6 +213,7 @@ int main(int argc, char** argv, char** env) {
     for (int i = 0; i < memsize_words; ++i) {
         uint32_t word = simulator_read_word(&simulator, i * 4);
         dut->rootp->cpu_pl_soc__DOT__core0__DOT__progMEM[i] = word;
+        dut->rootp->cpu_pl_soc__DOT__spram__DOT__memory[i] = word;
     }
 
     // Reset DUT

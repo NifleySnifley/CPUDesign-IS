@@ -78,7 +78,7 @@ module cpu_pipelined #(
     wire [4:0] DE_rs2_index = DE_instruction[24:20];
 
     // Detect hazard (dependency) of the current instruction to decode and active instructions in WB and EX.
-    wire DE_has_rs1 = ~((DE_opcode == 5'b11011) || (DE_opcode == 5'b00101) || (DE_opcode == 5'b11001));
+    wire DE_has_rs1 = ~((DE_opcode == 5'b11011) || (DE_opcode == 5'b00101));
     wire DE_has_rs2 = DE_has_rs1 && ((DE_opcode == 5'b01100) || (DE_opcode == 5'b01000) || (DE_opcode == 5'b11000));
     wire DE_hazard = DE_has_rs1 && (((EX_rd_idx == DE_rs1_index)&&EX_valid || (WB_rd_idx == DE_rs1_index)&&WB_valid) && (DE_rs1_index != 0)) ||
                      DE_has_rs2 && (((EX_rd_idx == DE_rs2_index)&&EX_valid || (WB_rd_idx == DE_rs2_index)&&WB_valid) && (DE_rs2_index != 0));
@@ -258,7 +258,7 @@ module cpu_pipelined #(
                 end else if (EX_inst_is_jal) begin
                     WB_jump_pc <= EX_pc + EX_imm_j;
                 end else if (EX_inst_is_jalr) begin
-                    WB_jump_pc <= EX_pc + EX_rs1 + EX_imm_i;
+                    WB_jump_pc <= EX_rs1 + EX_imm_i;
                 end
             end else begin
                 WB_valid <= 1'b0;
@@ -272,7 +272,7 @@ module cpu_pipelined #(
     wire [29:0] loadstore_word_addr = loadstore_addr[31:2];
     wire [ 1:0] mem_loadstore_offset = loadstore_addr[1:0];
 
-    assign bus_addr = loadstore_addr;
+    assign bus_addr = (EX_inst_is_load || EX_inst_is_store) ? loadstore_addr : '0;
 
     assign bus_ren = EX_inst_is_load && EX_valid;
     assign bus_wen = EX_inst_is_store && EX_valid;

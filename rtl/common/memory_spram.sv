@@ -107,7 +107,13 @@ module sim_spram #(
 
     reg [31:0] memory[WORDS-1:0];
 
-    assign active = ((addr >= BASE_ADDR) & (addr < (BASE_ADDR + SIZE)));
+    generate
+        if (BASE_ADDR == 0) begin
+            assign active = (addr < (BASE_ADDR + SIZE));
+        end else begin
+            assign active = ((addr >= BASE_ADDR) & (addr < (BASE_ADDR + SIZE)));
+        end
+    endgenerate
     // assign active = addr >= BASE_ADDR;
 
     wire [31:0] addr_local = addr - BASE_ADDR;
@@ -120,12 +126,13 @@ module sim_spram #(
             if (wmask[1]) memory[addr_internal][15:8] <= wdata[15:8];
             if (wmask[2]) memory[addr_internal][23:16] <= wdata[23:16];
             if (wmask[3]) memory[addr_internal][31:24] <= wdata[31:24];
+            rdata <= wdata;
         end
     end
 
     reg [31:0] xact_addr;
     assign done = active & (xact_addr == addr);
     always @(posedge clk) begin
-        if (ren | wen) xact_addr <= addr;
+        xact_addr <= addr;
     end
 endmodule

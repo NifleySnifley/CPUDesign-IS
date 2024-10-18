@@ -63,7 +63,9 @@ module cpu_pl_soc #(
     wire spram_done;
     wire spram_active;
 
-    sim_spram spram (
+    sim_spram #(
+        .BASE_ADDR(0)
+    ) spram (
         .clk,
         .addr(spram_addr),
         .wdata(spram_wdata),
