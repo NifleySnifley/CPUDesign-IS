@@ -47,6 +47,9 @@ if __name__ == "__main__":
 	successes = []
 	fails = []
 	fail_insns = []
+ 
+	total_cycles = 0
+	total_instructions = 0
 
 	W = 10
 	tests = tests_binary_dir.glob("*.bin")
@@ -62,7 +65,7 @@ if __name__ == "__main__":
 
 		result = 0
 		with open(stdoutfile, 'w') as f:
-			result = subprocess.call([cosimulator_file, "-e", '-v',"-q", "-be", "-t", debugfile, test], stdout=f, stderr=subprocess.DEVNULL)
+			result = subprocess.call([cosimulator_file, "-s", "-e", '-v',"-q", "-be", "-t", debugfile, test], stdout=f, stderr=subprocess.DEVNULL)
 		
 		stdout = ""
 		with open(stdoutfile, 'r') as f:
@@ -83,6 +86,13 @@ if __name__ == "__main__":
 			fails.append(testname)
 		else:
 			successes.append(testname)
+   
+			stats = stdout.split("Stats:\n")[1]
+
+			stats_instructions = int(re.findall(r"Instructions executed: (\d+)", stats)[0])
+			stats_cycles = int(re.findall(r"Processor cycles: (\d+)",stats)[0])
+			total_instructions += stats_instructions
+			total_cycles += stats_cycles
 
 		os.remove(stdoutfile)
 
@@ -94,3 +104,8 @@ if __name__ == "__main__":
 		print(f"Tests failed: {', '.join(fails)}")
 		print()
 		print(f"Specific instructions failed: {', '.join(set(fail_insns))}")
+  
+	print("\nStats:\n")
+	print(f"\tTotal # of instructions: {total_instructions}")
+	print(f"\tTotal # of cycles: {total_cycles}")
+	print(f"\tAvg. CPI: {total_cycles/total_instructions:.3f}")
