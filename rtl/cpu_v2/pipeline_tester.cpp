@@ -93,18 +93,18 @@ int main(int argc, char** argv, char** env) {
     vluint64_t sim_time = 0;
 
     // Reset DUT
-    // while (sim_time < RESET_TIME) {
-    //     dut->rst = 1;
-    //     dut->clk ^= 1;
-    //     dut->eval();
-    //     if (tracefile != nullptr)m_trace->dump(sim_time);
-    //     sim_time++;
-    // }
-    // dut->rst = 0;
+    while (sim_time < 6) {
+        dut->rst = 1;
+        dut->clk ^= 1;
+        dut->eval();
+        if (tracefile != nullptr)m_trace->dump(sim_time);
+        sim_time++;
+    }
+    dut->rst = 0;
 
     // Run DUT
 
-    for (int i = 0; i < 64; ++i) {
+    for (int i = 0; i < 256; ++i) {
         dut->clk = 0;
         dut->eval();
         if (tracefile != nullptr)m_trace->dump(sim_time);
@@ -113,6 +113,13 @@ int main(int argc, char** argv, char** env) {
         dut->eval();
         if (tracefile != nullptr)m_trace->dump(sim_time);
         sim_time++;
+
+        if (dut->rootp->cpu_pipelined__DOT__WB_valid) {
+            int sp_pc = simulator.pc;
+            rv_simulator_step(&simulator);
+            printf("Valid WB instruction @ pc=%x\n", dut->rootp->cpu_pipelined__DOT__WB_pc);
+            printf("Simulator completed pc=%x\n", sp_pc);
+        }
     }
 
 

@@ -7,16 +7,15 @@
                 "-cc"
             ],
             "includePath": [
-                // "${workspaceFolder}/**",
+                "obj_dir/",
                 "/usr/include",
                 "/usr/local/include",
-                "/usr/share/verilator/include",
                 "/opt/oss-cad-suite/share/verilator/include",
-                // "/usr/share/verilator/include",
                 "/usr/include/linux"
             ],
             "cStandard": "c11",
-            "cppStandard": "c++17"
+            "cppStandard": "c++17",
+            "configurationProvider": "ms-vscode.makefile-tools"
         }
     ],
     "version": 4

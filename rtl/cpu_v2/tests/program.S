@@ -1,19 +1,20 @@
     .section .text.start;
     .global  _start;
 _start:
-    addi     x1, x0, 100
-    addi     x2, x1, 400
-    addi     x3, x0, 200
-    addi     x4, x0, 250
-    li       x5, 124124122
-    li       x6, 12
-# divu x5, x5, x6
+    addi     x4, x4, 1
+    li       x1, 200
 
-    sw       x5, 0(x0)
-    nop
-    nop
-    nop
-    nop
-    lw       x10, 0(x0)
+lp:
+    addi     x10, x10, 10
+# j lp
+    blt      x10, x1, lp
+
+
+    li       x5, 0xAA
+    li       x5, 0xAB
+    li       x5, 0xAC
+    li       x5, 0xAD
+    li       x5, 0xAE
+    li       x5, 0xAF
 # nop
 # divu x5, x5, x6

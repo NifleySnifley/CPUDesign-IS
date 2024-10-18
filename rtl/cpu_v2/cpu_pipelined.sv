@@ -27,21 +27,34 @@ module cpu_pipelined #(
     // Execute = EX
     // Writeback = WB
 
+    wire flush_FE = rst;
+    wire flush_DE = rst;
+    wire flush_EX = rst;
+    wire flush_WB = rst;
+
     // FETCH
     reg [31:0] FE_pc = 0;
-    // wire FE_flush = DE_flush;
 
     wire unsafe_executing = DE_pc_unsafe || EX_pc_unsafe;
 
+    // PC for instruction to fetch
+    wire [31:0] fetch_pc = ((WB_pc_unsafe && WB_valid) ? WB_jump_pc : FE_pc);
     always @(posedge clk) begin
-        if (DE_open && ~unsafe_executing) begin
-            DE_instruction <= progMEM[FE_pc[PROGROM_ADDRBITS+1:2]];
-            FE_pc <= WB_pc_unsafe ? WB_jump_pc : FE_pc + 4;
-
-            DE_pc <= FE_pc;
-            DE_valid <= 1'b1;
+        if (flush_FE) begin
+            FE_pc <= 0;
         end else begin
-            DE_valid <= ~unsafe_executing;
+            if (DE_open) begin
+                if (~unsafe_executing) begin
+                    DE_instruction <= progMEM[fetch_pc[PROGROM_ADDRBITS+1:2]];
+                    // $display("Issued instruction at PC=%x into pipeline.", fetch_pc);
+                    FE_pc <= fetch_pc + 4;
+                    DE_pc <= fetch_pc;
+                    DE_valid <= 1'b1;
+                end else begin
+                    DE_instruction <= '0;
+                    DE_valid <= 1'b0;
+                end
+            end
         end
     end
 
@@ -65,55 +78,63 @@ module cpu_pipelined #(
                      DE_has_rs2 && (((EX_rd_idx == DE_rs2_index)&&EX_valid || (WB_rd_idx == DE_rs2_index)&&WB_valid) && (DE_rs2_index != 0));
 
     always @(posedge clk) begin
-        if (EX_open & DE_valid & ~DE_hazard) begin
-            // Load into execute stage
-            EX_ALU_is_register <= DE_opcode == 5'b01100;
-            EX_inst_is_ALU <= (DE_opcode == 5'b01100) || (DE_opcode == 5'b00100);
-            EX_inst_is_load <= DE_opcode == 5'b00000;
-            EX_inst_is_store <= DE_opcode == 5'b01000;
-            EX_inst_is_branch <= DE_opcode == 5'b11000;
-            EX_inst_is_jal <= DE_opcode == 5'b11011;
-            EX_inst_is_jalr <= DE_opcode == 5'b11001;
-            EX_inst_is_lui <= DE_opcode == 5'b01101;
-            EX_inst_is_auipc <= DE_opcode == 5'b00101;
-            EX_inst_is_system <= DE_opcode == 5'b11100;
-
-            // TODO: Implement result forwarding here (take from before writeback stage)
-            EX_rs1 <= registers[DE_rs1_index];
-            EX_rs2 <= registers[DE_rs2_index];
-
-            EX_rd_idx <= DE_instruction[11:7];
-
-            EX_imm_s <= {{20{DE_instruction[31]}}, DE_instruction[31:25], DE_instruction[11:7]};
-            EX_imm_i <= {{20{DE_instruction[31]}}, DE_instruction[31:20]};
-            EX_imm_b <= {
-                {20{DE_instruction[31]}},
-                DE_instruction[7],
-                DE_instruction[30:25],
-                DE_instruction[11:8],
-                1'b0
-            };
-            EX_imm_u <= {DE_instruction[31:12], 12'b0};
-            EX_imm_j <= {
-                {12{DE_instruction[31]}},
-                DE_instruction[19:12],
-                DE_instruction[20],
-                DE_instruction[30:21],
-                1'b0
-            };
-
-            EX_instruction <= DE_instruction;
-
-            EX_begin <= 1'b1;
-            // EX_valid <= 1'b1;
-            EX_pc_unsafe <= DE_pc_unsafe;
-            EX_pc <= DE_pc;
+        if (flush_DE) begin
+            DE_pc <= 0;
+            DE_instruction <= 0;
+            DE_valid <= 0;
         end else begin
-            EX_begin <= 1'b0;
-            // EX_valid <= 1'b1;
-        end
+            if (EX_open & DE_valid & ~DE_hazard) begin
+                // Load into execute stage
+                EX_ALU_is_register <= DE_opcode == 5'b01100;
+                EX_inst_is_ALU <= (DE_opcode == 5'b01100) || (DE_opcode == 5'b00100);
+                EX_inst_is_load <= DE_opcode == 5'b00000;
+                EX_inst_is_store <= DE_opcode == 5'b01000;
+                EX_inst_is_branch <= DE_opcode == 5'b11000;
+                EX_inst_is_jal <= DE_opcode == 5'b11011;
+                EX_inst_is_jalr <= DE_opcode == 5'b11001;
+                EX_inst_is_lui <= DE_opcode == 5'b01101;
+                EX_inst_is_auipc <= DE_opcode == 5'b00101;
+                EX_inst_is_system <= DE_opcode == 5'b11100;
 
-        if (EX_open) EX_valid <= DE_valid & ~DE_hazard & (DE_instruction[1:0] == 2'b11);
+                // TODO: Implement result forwarding here (take from before writeback stage)
+                EX_rs1 <= registers[DE_rs1_index];
+                EX_rs2 <= registers[DE_rs2_index];
+
+                EX_rd_idx <= DE_instruction[11:7];
+
+                EX_imm_s <= {{20{DE_instruction[31]}}, DE_instruction[31:25], DE_instruction[11:7]};
+                EX_imm_i <= {{20{DE_instruction[31]}}, DE_instruction[31:20]};
+                EX_imm_b <= {
+                    {20{DE_instruction[31]}},
+                    DE_instruction[7],
+                    DE_instruction[30:25],
+                    DE_instruction[11:8],
+                    1'b0
+                };
+                EX_imm_u <= {DE_instruction[31:12], 12'b0};
+                EX_imm_j <= {
+                    {12{DE_instruction[31]}},
+                    DE_instruction[19:12],
+                    DE_instruction[20],
+                    DE_instruction[30:21],
+                    1'b0
+                };
+
+                EX_instruction <= DE_instruction;
+
+                EX_begin <= 1'b1;
+                // EX_valid <= 1'b1;
+                EX_pc <= DE_pc;
+            end else begin
+                EX_begin <= 1'b0;
+                // EX_valid <= 1'b1;
+            end
+
+            if (EX_open) begin
+                EX_valid <= DE_valid & ~DE_hazard & (DE_instruction[1:0] == 2'b11);
+                EX_pc_unsafe <= DE_pc_unsafe;
+            end
+        end
     end
 
     // EXECUTE
@@ -177,39 +198,65 @@ module cpu_pipelined #(
         .done(alu_done)
     );
 
-    reg EX_waiting = 0;
-    // TODO: Implement proper bus, instead of single-cycle local stores
-    // ((EX_inst_is_load || EX_inst_is_store) & bus_done)
-
     wire EX_done = (~EX_valid) || (EX_inst_is_ALU & alu_done) || ((EX_inst_is_load && bus_done) || (EX_inst_is_store && bus_done) || EX_inst_is_auipc || EX_inst_is_branch || EX_inst_is_jal || EX_inst_is_jalr || EX_inst_is_system || EX_inst_is_lui);
     wire EX_has_writeback = ~(EX_inst_is_branch || EX_inst_is_store || EX_inst_is_system);
 
     always @(posedge clk) begin
-        if (EX_done & EX_valid & WB_open) begin
-            WB_pc <= EX_pc;
-            WB_rd_idx <= EX_has_writeback ? EX_rd_idx : '0;
-            WB_pc_unsafe <= EX_pc_unsafe;
-            WB_valid <= 1'b1;
+        if (flush_EX) begin
+            EX_ALU_is_register <= 0;
+            EX_inst_is_ALU <= 0;
+            EX_inst_is_load <= 0;
+            EX_inst_is_store <= 0;
+            EX_inst_is_branch <= 0;
+            EX_inst_is_jal <= 0;
+            EX_inst_is_jalr <= 0;
+            EX_inst_is_lui <= 0;
+            EX_inst_is_auipc <= 0;
+            EX_inst_is_system <= 0;
 
-            // Output result
-            case (1'b1)
-                EX_inst_is_ALU: WB_value <= alu_out;
-                EX_inst_is_lui: WB_value <= EX_imm_u;
-                EX_inst_is_auipc: WB_value <= EX_pc + EX_imm_u;
-                (EX_inst_is_jal | EX_inst_is_jalr): WB_value <= EX_pc + 4;
-                EX_inst_is_load: WB_value <= load_value;
-                default: WB_value <= '0;
-            endcase
+            EX_rs1 <= 0;
+            EX_rs2 <= 0;
 
-            if (EX_inst_is_branch) begin
-                WB_jump_pc <= EX_branch_cond ? (EX_pc + EX_imm_b) : (EX_pc + 4);
-            end else if (EX_inst_is_jal) begin
-                WB_jump_pc <= EX_pc + EX_imm_j;
-            end else if (EX_inst_is_jalr) begin
-                WB_jump_pc <= EX_pc + EX_rs1 + EX_imm_i;
-            end
+            EX_rd_idx <= 0;
+
+            EX_imm_s <= 0;
+            EX_imm_i <= 0;
+            EX_imm_b <= 0;
+            EX_imm_u <= 0;
+            EX_imm_j <= 0;
+
+            EX_instruction <= 0;
+            EX_begin <= 1'b0;
+            EX_valid <= 1'b0;
+            EX_pc <= 0;
+            EX_pc_unsafe <= 0;
         end else begin
-            WB_valid <= 1'b0;
+            if (EX_done & EX_valid & WB_open) begin
+                WB_pc <= EX_pc;
+                WB_rd_idx <= EX_has_writeback ? EX_rd_idx : '0;
+                WB_pc_unsafe <= EX_pc_unsafe;
+                WB_valid <= 1'b1;
+
+                // Output result
+                case (1'b1)
+                    EX_inst_is_ALU: WB_value <= alu_out;
+                    EX_inst_is_lui: WB_value <= EX_imm_u;
+                    EX_inst_is_auipc: WB_value <= EX_pc + EX_imm_u;
+                    (EX_inst_is_jal | EX_inst_is_jalr): WB_value <= EX_pc + 4;
+                    EX_inst_is_load: WB_value <= load_value;
+                    default: WB_value <= '0;
+                endcase
+
+                if (EX_inst_is_branch) begin
+                    WB_jump_pc <= EX_branch_cond ? (EX_pc + EX_imm_b) : (EX_pc + 4);
+                end else if (EX_inst_is_jal) begin
+                    WB_jump_pc <= EX_pc + EX_imm_j;
+                end else if (EX_inst_is_jalr) begin
+                    WB_jump_pc <= EX_pc + EX_rs1 + EX_imm_i;
+                end
+            end else begin
+                WB_valid <= 1'b0;
+            end
         end
     end
 
@@ -277,8 +324,17 @@ module cpu_pipelined #(
     reg [31:0] WB_jump_pc = 0;
 
     always @(posedge clk) begin
-        if (WB_valid && WB_rd_idx != 0) begin
-            registers[WB_rd_idx] <= WB_value;
+        if (flush_WB) begin
+            WB_valid <= 0;
+            WB_pc <= 0;
+            WB_value <= 0;
+            WB_rd_idx <= 0;
+            WB_pc_unsafe <= 0;
+            WB_jump_pc <= 0;
+        end else begin
+            if (WB_valid && WB_rd_idx != 0) begin
+                registers[WB_rd_idx] <= WB_value;
+            end
         end
     end
 
