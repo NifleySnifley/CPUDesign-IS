@@ -80,8 +80,12 @@ module cpu_pipelined #(
     // Detect hazard (dependency) of the current instruction to decode and active instructions in WB and EX.
     wire DE_has_rs1 = ~((DE_opcode == 5'b11011) || (DE_opcode == 5'b00101));
     wire DE_has_rs2 = DE_has_rs1 && ((DE_opcode == 5'b01100) || (DE_opcode == 5'b01000) || (DE_opcode == 5'b11000));
-    wire DE_hazard = DE_has_rs1 && (((EX_rd_idx == DE_rs1_index)&&EX_valid || (WB_rd_idx == DE_rs1_index)&&WB_valid) && (DE_rs1_index != 0)) ||
-                     DE_has_rs2 && (((EX_rd_idx == DE_rs2_index)&&EX_valid || (WB_rd_idx == DE_rs2_index)&&WB_valid) && (DE_rs2_index != 0));
+    wire DE_hazard = DE_has_rs1 && (((EX_rd_idx == DE_rs1_index)&&EX_valid) && (DE_rs1_index != 0)) ||
+                     DE_has_rs2 && (((EX_rd_idx == DE_rs2_index)&&EX_valid) && (DE_rs2_index != 0));
+
+    // Register forwarding here!
+    wire WB_has_DE_rs1 = (WB_rd_idx == DE_rs1_index) && WB_valid && (WB_rd_idx != 0);
+    wire WB_has_DE_rs2 = (WB_rd_idx == DE_rs2_index) && WB_valid && (WB_rd_idx != 0);
 
     always @(posedge clk) begin
         if (flush_DE) begin
@@ -102,9 +106,8 @@ module cpu_pipelined #(
                 EX_inst_is_auipc <= DE_opcode == 5'b00101;
                 EX_inst_is_system <= DE_opcode == 5'b11100;
 
-                // TODO: Implement result forwarding here (take from before writeback stage)
-                EX_rs1 <= registers[DE_rs1_index];
-                EX_rs2 <= registers[DE_rs2_index];
+                EX_rs1 <= (WB_has_DE_rs1 ? WB_value : registers[DE_rs1_index]);
+                EX_rs2 <= (WB_has_DE_rs2 ? WB_value : registers[DE_rs2_index]);
 
                 EX_rd_idx <= DE_instruction[11:7];
 
