@@ -13,7 +13,7 @@
 #include <chrono>
 
 extern "C" {
-#include "../../software/simulator/src/rv32i_simulator.h"
+#include "../../../software/simulator/src/rv32i_simulator.h"
 }
 
 int simulator_read_word(rv_simulator_t* sim, uint32_t i) {

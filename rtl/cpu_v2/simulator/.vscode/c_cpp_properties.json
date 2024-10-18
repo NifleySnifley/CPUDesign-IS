@@ -1,0 +1,22 @@
+{
+    "configurations": [
+        {
+            "name": "Verilator",
+            "compilerPath": "/bin/gcc",
+            "compilerArgs": [
+                "-cc"
+            ],
+            "includePath": [
+                "obj_dir/",
+                "/usr/include",
+                "/usr/local/include",
+                "/opt/oss-cad-suite/share/verilator/include",
+                "/usr/include/linux"
+            ],
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "configurationProvider": "ms-vscode.makefile-tools"
+        }
+    ],
+    "version": 4
+}

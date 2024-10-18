@@ -3,18 +3,23 @@
 `endif
 
 module cpu_pipelined #(
-    parameter PROGROM_SIZE_W = 2048,
-    parameter RAM_SIZE_W = 2048
+    parameter PROGROM_SIZE_W = 2048
 ) (
     input wire rst,
-    input wire clk
+    input wire clk,
+
+    output wire [31:0] bus_addr,
+    output wire [31:0] bus_wdata,
+    output wire [3:0] bus_wmask,
+    input [31:0] bus_rdata,
+    output wire bus_wen,
+    output wire bus_ren,
+    input wire bus_done
 );
     // TODO: Turn progMEM into a L1 instruction cache
     // Keep the modified harvard (for speed) but it would be good to share program & data memory
     reg [31:0] progMEM[PROGROM_SIZE_W-1:0];
-    reg [31:0] ramMEM[RAM_SIZE_W-1:0];
     parameter PROGROM_ADDRBITS = $clog2(PROGROM_SIZE_W);
-    parameter RAM_ADDRBITS = $clog2(RAM_SIZE_W);
 
     (* no_rw_check *)
     reg [31:0] registers[31:0];
@@ -27,6 +32,7 @@ module cpu_pipelined #(
     // Execute = EX
     // Writeback = WB
 
+    // TODO: Use this in the future for flushing failed branch-predicts?
     wire flush_FE = rst;
     wire flush_DE = rst;
     wire flush_EX = rst;
@@ -260,37 +266,19 @@ module cpu_pipelined #(
         end
     end
 
-    ////////////////////////// SIMULATED BUS //////////////////////////
+    ////////////////////////// BUS //////////////////////////
 
     wire [31:0] loadstore_addr = EX_rs1 + (EX_inst_is_store ? EX_imm_s : EX_imm_i);
     wire [29:0] loadstore_word_addr = loadstore_addr[31:2];
-    wire [1:0] mem_loadstore_offset = loadstore_addr[1:0];
+    wire [ 1:0] mem_loadstore_offset = loadstore_addr[1:0];
 
-    reg [31:0] bus_rdata;
-    reg [31:0] bus_xact_addr = 0;
-    wire bus_done = bus_xact_addr == {bus_ren, bus_wen, loadstore_word_addr};
-    always @(posedge clk) begin
-        if (bus_wen) begin
-            if (bus_wmask[0]) ramMEM[loadstore_word_addr[RAM_ADDRBITS-1:0]][7:0] <= bus_wdata[7:0];
-            if (bus_wmask[1])
-                ramMEM[loadstore_word_addr[RAM_ADDRBITS-1:0]][15:8] <= bus_wdata[15:8];
-            if (bus_wmask[2])
-                ramMEM[loadstore_word_addr[RAM_ADDRBITS-1:0]][23:16] <= bus_wdata[23:16];
-            if (bus_wmask[3])
-                ramMEM[loadstore_word_addr[RAM_ADDRBITS-1:0]][31:24] <= bus_wdata[31:24];
-            bus_xact_addr <= {bus_ren, bus_wen, loadstore_word_addr};
-            // bus_rdata <= bus_wdata;
-        end else if (bus_ren) begin
-            bus_rdata <= ramMEM[loadstore_word_addr[RAM_ADDRBITS-1:0]];
-            bus_xact_addr <= {bus_ren, bus_wen, loadstore_word_addr};
-        end
-    end
+    assign bus_addr = loadstore_addr;
 
-    wire bus_ren = EX_inst_is_load && EX_valid;
-    wire bus_wen = EX_inst_is_store && EX_valid;
+    assign bus_ren = EX_inst_is_load && EX_valid;
+    assign bus_wen = EX_inst_is_store && EX_valid;
 
     // Bytewise shifting for write alignment bytes and half
-    wire [31:0] bus_wdata = {
+    assign bus_wdata = {
         mem_loadstore_offset[0] ? EX_rs2[7:0] : mem_loadstore_offset[1] ? EX_rs2[15:8] : EX_rs2[31:24],
         mem_loadstore_offset[1] ? EX_rs2[7:0] : EX_rs2[23:16],
         mem_loadstore_offset[0] ? EX_rs2[7:0] : EX_rs2[15:8],
@@ -298,9 +286,9 @@ module cpu_pipelined #(
     };
 
     wire [2:0] loadstore_size_onehot = 3'b1 << EX_funct3[1:0];
-    wire load_signext = ~bus_rdata[14];  // funct3[2]
+    wire load_signext = ~EX_funct3[2];
 
-    wire[3:0] bus_wmask = (loadstore_size_onehot[2] ? 4'b1111 : 0) | 
+    assign bus_wmask = (loadstore_size_onehot[2] ? 4'b1111 : 0) | 
                         (loadstore_size_onehot[1] ? (mem_loadstore_offset[1] ? 4'b1100 : 4'b0011) : 0) |
                         (loadstore_size_onehot[0] ? (
                             mem_loadstore_offset[0] ? (mem_loadstore_offset[1] ? 4'b1000:4'b0010): (mem_loadstore_offset[1] ? 4'b0100:4'b0001) 
@@ -312,9 +300,8 @@ module cpu_pipelined #(
                             (loadstore_size_onehot[1] ? ({load_signext ? {16{load_half[15]}}:16'b0, load_half}) : 32'b0) |
                             (loadstore_size_onehot[2] ? bus_rdata : 32'b0);
 
+    // Writeback
 
-
-    // TODO: Prevent writing over and over again when execute is waiting for like, division or something!
     wire WB_open = 1;
     reg WB_valid = 0;
     reg [31:0] WB_pc = 0;

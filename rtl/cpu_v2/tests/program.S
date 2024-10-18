@@ -16,5 +16,6 @@ lp:
     li       x5, 0xAD
     li       x5, 0xAE
     li       x5, 0xAF
+    ebreak
 # nop
 # divu x5, x5, x6
