@@ -1,7 +1,8 @@
 module memory #(
-    parameter SIZE   = 256,
+    parameter SIZE = 256,
     parameter INIT_B = "",
-    parameter INIT_H = ""
+    parameter INIT_H = "",
+    parameter BASEADDR = 0
 ) (
     input wire clk,
     input wire [31:0] mem_addr,
@@ -29,8 +30,16 @@ module memory #(
         if (INIT_H != "") $readmemh(INIT_H, memory);
     end
 
-    wire [DEPTH_B-1:0] word_addr = mem_addr[1+DEPTH_B:2];
-    assign active = mem_addr < SIZE * 4;
+    wire [31:0] local_addr = mem_addr - BASEADDR;
+    wire [DEPTH_B-1:0] word_addr = local_addr[1+DEPTH_B:2];
+
+    generate
+        if (BASEADDR == 0) begin
+            assign active = (mem_addr < (SIZE * 4));
+        end else begin
+            assign active = (mem_addr < (BASEADDR + SIZE * 4)) && (mem_addr >= BASEADDR);
+        end
+    endgenerate
 
     always @(posedge clk) begin
         // NOTE: WRITE PORT (sync)

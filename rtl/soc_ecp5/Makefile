@@ -1,11 +1,11 @@
 PROJNAME=soc_ecp5
-SYNTH_SRCS=../cpu/cpu.sv ../alu/alu.sv ./$(PROJNAME).sv ../common/memory.sv ../common/bus_hub_4.sv ../common/bus_hub_2.sv ../common/bus_hub_3.sv ../common/bus_hub_5.sv ../fpga/parallel_port.sv ../fpga/spi.sv ../graphics/rtl/bw_textmode_gpu.sv ../graphics/rtl/vga_pll.sv ../graphics/rtl/fontROM.sv ../graphics/rtl/color_textmode_gpu.sv
+SYNTH_SRCS=../cpu/cpu.sv ../cpu_v2/cpu_pipelined.sv ../alu/alu.sv ./$(PROJNAME).sv ../common/memory.sv ../common/bus_hub_4.sv ../common/bus_hub_2.sv ../common/bus_hub_3.sv ../common/bus_hub_5.sv ../fpga/parallel_port.sv ../fpga/spi.sv ../graphics/rtl/bw_textmode_gpu.sv ../graphics/rtl/vga_pll.sv ../graphics/rtl/fontROM.sv ../graphics/rtl/color_textmode_gpu.sv
 COMMONDIR=../common
 
 PACKAGE=CABGA256
 LFP=$(PROJNAME).lpf
 
-MEMSIZE=16384
+MEMSIZE=8192
 
 all: build/$(PROJNAME).svf build/$(PROJNAME).bit
 

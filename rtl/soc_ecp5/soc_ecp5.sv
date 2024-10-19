@@ -2,6 +2,7 @@
 
 `ifdef IVERILOG_LINT
 `include "../cpu/cpu.sv"
+`include "../cpu_v2/cpu_pipelined.sv"
 `include "../common/memory.sv"
 `include "../common/memory_spram.sv"
 `include "../common/bus_hub_1.sv"
@@ -11,9 +12,11 @@
 `endif
 
 `include "pll_50MHz.sv"
+`include "pll_40MHz.sv"
 
 module soc_ecp5 #(
-    parameter MEMSIZE = 16384
+    parameter PROGSIZE = 8192,
+    parameter MEMSIZE  = 8192
 ) (
     input  wire osc_clk25,
     input  wire button,
@@ -40,20 +43,21 @@ module soc_ecp5 #(
     wire bus_wen;
     wire bus_ren;
     wire bus_done;
-    wire instruction_sync;
-    wire [31:0] pc_output;
     wire [3:0] bus_wmask;
 
     // wire core_clk = osc_clk25;
     wire pll_locked;
     wire core_clk;
-    pll_50MHz pll (
+    pll_40MHz pll (
         .clkin  (osc_clk25),
         .clkout0(core_clk),
         .locked (pll_locked)
     );
 
-    cpu core0 (
+    cpu_pipelined #(
+        .PROGROM_SIZE_W(PROGSIZE),
+        .INIT_H("build/phony.hex")
+    ) core0 (
         .clk(core_clk),
         .rst(rst_state | ~pll_locked),
         .bus_addr,
@@ -62,9 +66,7 @@ module soc_ecp5 #(
         .bus_rdata,
         .bus_done,
         .bus_wen,
-        .bus_ren,
-        .instruction_sync,
-        .dbg_pc(pc_output)
+        .bus_ren
     );
 
     bus_hub_2 hub (
@@ -98,8 +100,9 @@ module soc_ecp5 #(
     wire mem_active;
 
     memory #(
-        .INIT_H("build/phony.hex"),
-        .SIZE  (MEMSIZE)
+        .INIT_H(""),
+        .SIZE(MEMSIZE),
+        .BASEADDR(PROGSIZE)
     ) mem (
         .clk(core_clk),
         .mem_addr,

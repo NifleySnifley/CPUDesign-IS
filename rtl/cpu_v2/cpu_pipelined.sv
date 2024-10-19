@@ -3,7 +3,8 @@
 `endif
 
 module cpu_pipelined #(
-    parameter PROGROM_SIZE_W = 2048
+    parameter PROGROM_SIZE_W = 2048,
+    parameter INIT_H = ""
 ) (
     input wire rst,
     input wire clk,
@@ -20,6 +21,10 @@ module cpu_pipelined #(
     // Keep the modified harvard (for speed) but it would be good to share program & data memory
     reg [31:0] progMEM[PROGROM_SIZE_W-1:0];
     parameter PROGROM_ADDRBITS = $clog2(PROGROM_SIZE_W);
+
+    initial begin
+        if (INIT_H != "") $readmemh(INIT_H, progMEM);
+    end
 
     (* no_rw_check *)
     reg [31:0] registers[31:0];
@@ -46,8 +51,11 @@ module cpu_pipelined #(
     // PC for instruction to fetch
     wire [31:0] fetch_pc = ((WB_pc_unsafe && WB_valid) ? WB_jump_pc : FE_pc);
     always @(posedge clk) begin
-        if (flush_FE) begin
+        if (flush_DE) begin
             FE_pc <= 0;
+            DE_pc <= 0;
+            DE_instruction <= 0;
+            DE_valid <= 0;
         end else begin
             if (DE_open) begin
                 if (~unsafe_executing) begin
@@ -87,11 +95,41 @@ module cpu_pipelined #(
     wire WB_has_DE_rs1 = (WB_rd_idx == DE_rs1_index) && WB_valid && (WB_rd_idx != 0);
     wire WB_has_DE_rs2 = (WB_rd_idx == DE_rs2_index) && WB_valid && (WB_rd_idx != 0);
 
+    // Detect hazard (dependency) of the current instruction to decode and active instructions in WB and EX.
+    // wire DE_has_rs1 = ~((DE_opcode == 5'b11011) || (DE_opcode == 5'b00101));
+    // wire DE_has_rs2 = DE_has_rs1 && ((DE_opcode == 5'b01100) || (DE_opcode == 5'b01000) || (DE_opcode == 5'b11000));
+    // wire DE_hazard = DE_has_rs1 && (((EX_rd_idx == DE_rs1_index)&&EX_valid || (WB_rd_idx == DE_rs1_index)&&WB_valid) && (DE_rs1_index != 0)) ||
+    //                  DE_has_rs2 && (((EX_rd_idx == DE_rs2_index)&&EX_valid || (WB_rd_idx == DE_rs2_index)&&WB_valid) && (DE_rs2_index != 0));
+
     always @(posedge clk) begin
-        if (flush_DE) begin
-            DE_pc <= 0;
-            DE_instruction <= 0;
-            DE_valid <= 0;
+        if (flush_EX) begin
+            EX_ALU_is_register <= 0;
+            EX_inst_is_ALU <= 0;
+            EX_inst_is_load <= 0;
+            EX_inst_is_store <= 0;
+            EX_inst_is_branch <= 0;
+            EX_inst_is_jal <= 0;
+            EX_inst_is_jalr <= 0;
+            EX_inst_is_lui <= 0;
+            EX_inst_is_auipc <= 0;
+            EX_inst_is_system <= 0;
+
+            EX_rs1 <= 0;
+            EX_rs2 <= 0;
+
+            EX_rd_idx <= 0;
+
+            EX_imm_s <= 0;
+            EX_imm_i <= 0;
+            EX_imm_b <= 0;
+            EX_imm_u <= 0;
+            EX_imm_j <= 0;
+
+            EX_instruction <= 0;
+            EX_begin <= 1'b0;
+            EX_valid <= 1'b0;
+            EX_pc <= 0;
+            EX_pc_unsafe <= 0;
         end else begin
             if (EX_open & DE_valid & ~DE_hazard) begin
                 // Load into execute stage
@@ -108,6 +146,8 @@ module cpu_pipelined #(
 
                 EX_rs1 <= (WB_has_DE_rs1 ? WB_value : registers[DE_rs1_index]);
                 EX_rs2 <= (WB_has_DE_rs2 ? WB_value : registers[DE_rs2_index]);
+                // EX_rs1 <= registers[DE_rs1_index];
+                // EX_rs2 <= registers[DE_rs2_index];
 
                 EX_rd_idx <= DE_instruction[11:7];
 
@@ -211,34 +251,13 @@ module cpu_pipelined #(
     wire EX_has_writeback = ~(EX_inst_is_branch || EX_inst_is_store || EX_inst_is_system);
 
     always @(posedge clk) begin
-        if (flush_EX) begin
-            EX_ALU_is_register <= 0;
-            EX_inst_is_ALU <= 0;
-            EX_inst_is_load <= 0;
-            EX_inst_is_store <= 0;
-            EX_inst_is_branch <= 0;
-            EX_inst_is_jal <= 0;
-            EX_inst_is_jalr <= 0;
-            EX_inst_is_lui <= 0;
-            EX_inst_is_auipc <= 0;
-            EX_inst_is_system <= 0;
-
-            EX_rs1 <= 0;
-            EX_rs2 <= 0;
-
-            EX_rd_idx <= 0;
-
-            EX_imm_s <= 0;
-            EX_imm_i <= 0;
-            EX_imm_b <= 0;
-            EX_imm_u <= 0;
-            EX_imm_j <= 0;
-
-            EX_instruction <= 0;
-            EX_begin <= 1'b0;
-            EX_valid <= 1'b0;
-            EX_pc <= 0;
-            EX_pc_unsafe <= 0;
+        if (flush_WB) begin
+            WB_valid <= 0;
+            WB_pc <= 0;
+            WB_value <= 0;
+            WB_rd_idx <= 0;
+            WB_pc_unsafe <= 0;
+            WB_jump_pc <= 0;
         end else begin
             if (EX_done & EX_valid & WB_open) begin
                 WB_pc <= EX_pc;
@@ -314,17 +333,8 @@ module cpu_pipelined #(
     reg [31:0] WB_jump_pc = 0;
 
     always @(posedge clk) begin
-        if (flush_WB) begin
-            WB_valid <= 0;
-            WB_pc <= 0;
-            WB_value <= 0;
-            WB_rd_idx <= 0;
-            WB_pc_unsafe <= 0;
-            WB_jump_pc <= 0;
-        end else begin
-            if (WB_valid && WB_rd_idx != 0) begin
-                registers[WB_rd_idx] <= WB_value;
-            end
+        if (WB_valid && WB_rd_idx != 0) begin
+            registers[WB_rd_idx] <= WB_value;
         end
     end
 
