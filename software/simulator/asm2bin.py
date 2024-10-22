@@ -13,6 +13,8 @@ parser.add_argument("-x", "--hex", action="store_true", help="Writes program dat
 parser.add_argument("-p", "--pad", type=int)
 parser.add_argument("-a", "--assemble", action="store_true", help="Treat the input as assembly and assemble it")
 parser.add_argument("-d", "--dissasemble", action="store_true",help="Show dissasembly of input")
+parser.add_argument("-D", "--dataonly", action="store_true")
+parser.add_argument("-T", "--textonly", action="store_true")
 args = parser.parse_args()
 
 p = Path()
@@ -36,7 +38,16 @@ if(args.dissasemble and subprocess.call([f"riscv32-unknown-elf-objdump",'-d','-M
     exit(1)
     # print(out1.decode('ascii'))
 
-if(subprocess.call(["riscv32-unknown-elf-objcopy", "-O", "binary", "-g", tf, tfbin])):
+copy_arglist = ["riscv32-unknown-elf-objcopy", "-O", "binary", "-g"]
+if (args.textonly):
+    copy_arglist += [
+        "--only-section", ".text"
+    ]
+elif (args.dataonly is not None):
+    copy_arglist += [
+        "-R", ".text"
+    ]
+if(subprocess.call(copy_arglist+ [tf, tfbin])):
     exit(1)
 
 with open(tfbin, 'rb') as bf:

@@ -1,6 +1,6 @@
 # Work Items for Pipelined CPU (v2):
 
-- [ ] Register forwarding (shouldn't be too bad)
+- [x] Register forwarding (shouldn't be too bad)
 - [ ] Branch prediction (basic) and pipeline flushing (make a more formal PC change system than just reading from WB stage...)
 - [ ] Unify the memory (implement a cache, or... just make a memory arbiter and read in the fetch stage! could maybe get down to single-cycle reads too with just one register?)
   - https://github.com/zebmehring/Processor-Cache

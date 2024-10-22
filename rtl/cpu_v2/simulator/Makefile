@@ -16,4 +16,4 @@ obj_dir/Vcpu_pl_soc: generate
 	$(MAKE) -C obj_dir -f Vcpu_pl_soc.mk Vcpu_pl_soc
 
 generate: main.cpp $(HDL_FILES)
-	verilator -cc -I$(VERILOG_DIR) -I$(VERILOG_DIR)/common --trace-structs --trace-depth 10 --trace --no-trace-params --top cpu_pl_soc $(HDL_FILES) --exe main.cpp ../$(SIM_DIR)/build/rv32i_simulator.o
+	verilator -cc -I$(VERILOG_DIR) -I../ -I$(VERILOG_DIR)/common --trace-structs --trace-depth 10 --trace --no-trace-params --top cpu_pl_soc $(HDL_FILES) --exe main.cpp ../$(SIM_DIR)/build/rv32i_simulator.o

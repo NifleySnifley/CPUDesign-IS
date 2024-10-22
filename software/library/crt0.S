@@ -19,3 +19,5 @@ zloop:
 	//       Call main
 	la       ra,_start
 	call     main
+	ebreak
+	j        _start

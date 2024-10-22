@@ -190,7 +190,7 @@ int main(int argc, char** argv, char** env) {
     }
 
     rv_simulator_t simulator;
-    constexpr uint32_t memsize_words = (sizeof(dut->rootp->cpu_pl_soc__DOT__core0__DOT__progMEM.m_storage)) / 4;
+    constexpr uint32_t memsize_words = (sizeof(dut->rootp->cpu_pl_soc__DOT__progMEM.m_storage)) / 4;
 
     constexpr uint32_t spram_baseaddr = 0x00000000;
     constexpr uint32_t spram_words = 32768;
@@ -212,7 +212,7 @@ int main(int argc, char** argv, char** env) {
     // Copy initialization memory from sim to DUT
     for (int i = 0; i < memsize_words; ++i) {
         uint32_t word = simulator_read_word(&simulator, i * 4);
-        dut->rootp->cpu_pl_soc__DOT__core0__DOT__progMEM[i] = word;
+        dut->rootp->cpu_pl_soc__DOT__progMEM[i] = word;
         dut->rootp->cpu_pl_soc__DOT__spram__DOT__memory[i] = word;
     }
 
@@ -280,7 +280,7 @@ int main(int argc, char** argv, char** env) {
             if (!equals) {
                 // if (!quiet) {
                 // printf("ERROR: Simulator does not match DUT!\n");
-                printf("Instruction failed (pc=%u): %x\n", dut_prevpc, dut->rootp->cpu_pl_soc__DOT__core0__DOT__progMEM[dut_prevpc / 4]);
+                printf("Instruction failed (pc=%u): %x\n", dut_prevpc, dut->rootp->cpu_pl_soc__DOT__spram__DOT__memory[dut_prevpc / 4]);
                 // }
                 fail = true;
                 if (!no_exit_on_fail) break;

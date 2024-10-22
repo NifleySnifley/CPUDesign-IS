@@ -2,10 +2,7 @@
 `include "../alu/alu.sv"
 `endif
 
-module cpu_pipelined #(
-    parameter PROGROM_SIZE_W = 2048,
-    parameter INIT_H = ""
-) (
+module cpu_pipelined (
     input wire rst,
     input wire clk,
 
@@ -22,16 +19,6 @@ module cpu_pipelined #(
     input wire [31:0] fetch_data,
     input wire fetch_done
 );
-    // TODO: Turn progMEM into a L1 instruction cache
-    // Keep the modified harvard (for speed) but it would be good to share program & data memory
-    // reg [31:0] progMEM[PROGROM_SIZE_W-1:0];
-    // parameter PROGROM_ADDRBITS = $clog2(PROGROM_SIZE_W);
-
-    // initial begin
-    //     if (INIT_H != "") $readmemh(INIT_H, progMEM);
-    // end
-
-
     (* no_rw_check *)
     reg [31:0] registers[31:0];
     initial begin
@@ -54,7 +41,7 @@ module cpu_pipelined #(
 
     wire unsafe_executing = DE_pc_unsafe || EX_pc_unsafe;
 
-    // PC for instruction to fetch
+    // Instruction fetching
     wire [31:0] fetch_pc = ((WB_pc_unsafe && WB_valid) ? WB_jump_pc : FE_pc);
     assign fetch_addr = fetch_pc;
     assign fetch_request = DE_open && (~unsafe_executing) & (~flush_DE);
@@ -69,7 +56,8 @@ module cpu_pipelined #(
             if (DE_open) begin
                 if (~unsafe_executing && fetch_done) begin
                     DE_instruction <= fetch_data;  //progMEM[fetch_pc[PROGROM_ADDRBITS+1:2]];
-                    // $display("Issued instruction at PC=%x into pipeline.", fetch_pc);
+                    $display("Issued instruction at PC=%x into pipeline. (%x)", fetch_pc,
+                             fetch_data);
                     FE_pc <= fetch_pc + 4;
                     DE_pc <= fetch_pc;
                     DE_valid <= 1'b1;

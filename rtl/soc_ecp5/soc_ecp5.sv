@@ -102,7 +102,7 @@ module soc_ecp5 #(
     memory #(
         .INIT_H(""),
         .SIZE(MEMSIZE),
-        .BASEADDR(PROGSIZE)
+        .BASEADDR(32'hf0000000)
     ) mem (
         .clk(core_clk),
         .mem_addr,
