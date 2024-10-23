@@ -131,7 +131,7 @@ module cpu (
 
     assign bus_addr = (state[STATE_INST_FETCH_IDX]) ? pc : ((inst_is_store || inst_is_load) ? loadstore_addr : pc);
     // TODO: Actually use this read strobe
-    assign bus_ren = inst_is_load && state[STATE_EXEC_IDX] || state[STATE_INST_FETCH_IDX];  // Always for just mem reads!
+    assign bus_ren = inst_is_load && state[STATE_EXEC_IDX] || state[STATE_INST_FETCH_IDX] || state[STATE_WRITEBACK_IDX];  // Always for just mem reads!
     assign bus_wen = inst_is_store && state[STATE_EXEC_IDX];
 
     // Bytewise shifting for write alignment bytes and half

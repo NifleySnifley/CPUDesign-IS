@@ -1,0 +1,46 @@
+{
+  signal: [
+    ["host",
+      { name: "clk", wave:   "P....", data:[] },
+      { name: "addr", wave:  "x==x.", data:["addr1","addr2"] },
+      { name: "wdata", wave: "x....", data:[] },
+      { name: "ren", wave:   "x1.xx", data:[] },
+      { name: "wen", wave:   "x0.xx", data:[] }
+    ],
+    ["device",
+     	{ name: "rdata", wave: "x.==x", data:["data1","data2"] },
+    	{ name: "done", wave:  "xx1.x", data:[] },
+    ]
+  ],
+  head: {
+    text: [
+      'tspan',
+      ['tspan', {class:'h3'}, 'Multi-Read Cycle'],
+    ]
+  },
+}
+     
+     /*
+
+{
+  signal: [
+    ["host",
+    { name: "clk", wave:   "P....", data:[] },
+      { name: "addr", wave:  "x=x..", data:["addr"] },
+    { name: "wdata", wave: "x....", data:[] },
+        { name: "ren", wave:   "x1xxx", data:[] },
+        { name: "wen", wave:   "x0...", data:[] },
+    ],
+["device",
+      { name: "rdata", wave: "x.=x.", data:["data"] },
+    { name: "done", wave:  "xx1x.", data:[] },
+    ],
+  ],
+  head: {
+    text: [
+      'tspan',
+      ['tspan', {class:'h3'}, 'Read Cycle'],
+    ]
+  },
+}
+     */

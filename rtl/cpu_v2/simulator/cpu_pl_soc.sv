@@ -1,3 +1,8 @@
+`ifdef IVERILOG_LINT
+`include "../bus_arbiter.sv"
+`endif
+
+
 module cpu_pl_soc #(
     parameter INIT_H = "",
     parameter PROGROM_SIZE_W = 8192
@@ -22,23 +27,8 @@ module cpu_pl_soc #(
         .bus_rdata,
         .bus_done,
         .bus_wen,
-        .bus_ren,
-        .fetch_addr,
-        .fetch_request,
-        .fetch_data,
-        .fetch_done
+        .bus_ren
     );
-
-    wire [31:0] fetch_addr;
-    wire fetch_request;
-    wire [31:0] fetch_data;
-    wire fetch_done;
-
-    reg [31:0] progMEM[PROGROM_SIZE_W-1:0];
-    parameter PROGROM_ADDRBITS = $clog2(PROGROM_SIZE_W);
-    wire [PROGROM_ADDRBITS-1:0] fetch_word_addr = fetch_addr[PROGROM_ADDRBITS+1:2];
-    assign fetch_data = fetch_request ? progMEM[fetch_word_addr] : '0;
-    assign fetch_done = 1'b1;
 
     wire [31:0] mem_addr;
     wire [31:0] mem_wdata;
