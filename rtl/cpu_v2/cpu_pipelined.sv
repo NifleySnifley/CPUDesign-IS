@@ -15,7 +15,12 @@ module cpu_pipelined #(
     input [31:0] bus_rdata,
     output wire bus_wen,
     output wire bus_ren,
-    input wire bus_done
+    input wire bus_done,
+
+    input wire [31:0] progMEM_addr,
+    input wire [31:0] progMEM_wdata,
+    output reg [31:0] progMEM_rdata,
+    input wire progMEM_wen
 );
     // TODO: Turn progMEM into a L1 instruction cache
     // Keep the modified harvard (for speed) but it would be good to share program & data memory
@@ -24,6 +29,16 @@ module cpu_pipelined #(
 
     initial begin
         if (INIT_H != "") $readmemh(INIT_H, progMEM);
+    end
+
+    always @(posedge clk) begin
+        if (progMEM_wen) begin
+            // TODO: Masking
+            progMEM[progMEM_addr] <= progMEM_wdata;
+            progMEM_rdata <= progMEM_wdata;
+        end else begin
+            progMEM_rdata <= progMEM[progMEM_addr];
+        end
     end
 
     (* no_rw_check *)
@@ -50,22 +65,32 @@ module cpu_pipelined #(
 
     // PC for instruction to fetch
     wire [31:0] fetch_pc = ((WB_pc_unsafe && WB_valid) ? WB_jump_pc : FE_pc);
+
+    // HACK: NECCESARY FOR INFERRENCE OF progMEM AS BRAM
+    wire [31:0] FE_instr_read = progMEM[fetch_pc[PROGROM_ADDRBITS+1:2]];
+    always @(posedge clk) begin
+        if (DE_open) begin
+            DE_instruction <= (~flush_FE && ~unsafe_executing) ? FE_instr_read : 0;
+        end
+    end
+
     always @(posedge clk) begin
         if (flush_FE) begin
             FE_pc <= 0;
             DE_pc <= 0;
-            DE_instruction <= 0;
+            // DE_instruction <= 0;
             DE_valid <= 0;
         end else begin
             if (DE_open) begin
                 if (~unsafe_executing) begin
-                    DE_instruction <= progMEM[fetch_pc[PROGROM_ADDRBITS+1:2]];
+                    // HACK: DE_instruction writing "belongs" here
+                    // DE_instruction <= progMEM[fetch_pc[PROGROM_ADDRBITS+1:2]];
                     // $display("Issued instruction at PC=%x into pipeline.", fetch_pc);
                     FE_pc <= fetch_pc + 4;
                     DE_pc <= fetch_pc;
                     DE_valid <= 1'b1;
                 end else begin
-                    DE_instruction <= '0;
+                    // DE_instruction <= '0;
                     DE_valid <= 1'b0;
                 end
             end

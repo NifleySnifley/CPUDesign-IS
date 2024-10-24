@@ -48,11 +48,17 @@ module soc_ecp5 #(
     // wire core_clk = osc_clk25;
     wire pll_locked;
     wire core_clk;
-    pll_40MHz pll (
+    pll_50MHz pll (
         .clkin  (osc_clk25),
         .clkout0(core_clk),
         .locked (pll_locked)
     );
+
+
+    wire [31:0] progMEM_addr = 0;
+    wire [31:0] progMEM_wdata = 0;
+    reg [31:0] progMEM_rdata;
+    wire progMEM_wen = 0;
 
     cpu_pipelined #(
         .PROGROM_SIZE_W(PROGSIZE),
@@ -66,7 +72,12 @@ module soc_ecp5 #(
         .bus_rdata,
         .bus_done,
         .bus_wen,
-        .bus_ren
+        .bus_ren,
+
+        .progMEM_addr,
+        .progMEM_wdata,
+        .progMEM_rdata,
+        .progMEM_wen
     );
 
     bus_hub_2 hub (

@@ -18,6 +18,11 @@ module cpu_pl_soc #(
     wire bus_done;
     wire [3:0] bus_wmask;
 
+    wire [31:0] progMEM_addr = 0;
+    wire [31:0] progMEM_wdata = 0;
+    reg [31:0] progMEM_rdata;
+    wire progMEM_wen = 0;
+
     cpu_pipelined #(
         .PROGROM_SIZE_W(PROGROM_SIZE_W)
     ) core0 (
@@ -29,7 +34,11 @@ module cpu_pl_soc #(
         .bus_rdata,
         .bus_done,
         .bus_wen,
-        .bus_ren
+        .bus_ren,
+        .progMEM_addr,
+        .progMEM_wdata,
+        .progMEM_rdata,
+        .progMEM_wen
     );
 
     wire [31:0] mem_addr;
