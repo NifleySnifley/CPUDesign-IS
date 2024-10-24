@@ -3,7 +3,8 @@
 `endif
 
 module cpu_pipelined #(
-    parameter PROGROM_SIZE_W = 2048
+    parameter PROGROM_SIZE_W = 2048,
+    parameter INIT_H = ""
 ) (
     input wire rst,
     input wire clk,
@@ -20,6 +21,10 @@ module cpu_pipelined #(
     // Keep the modified harvard (for speed) but it would be good to share program & data memory
     reg [31:0] progMEM[PROGROM_SIZE_W-1:0];
     parameter PROGROM_ADDRBITS = $clog2(PROGROM_SIZE_W);
+
+    initial begin
+        if (INIT_H != "") $readmemh(INIT_H, progMEM);
+    end
 
     (* no_rw_check *)
     reg [31:0] registers[31:0];
@@ -48,6 +53,9 @@ module cpu_pipelined #(
     always @(posedge clk) begin
         if (flush_FE) begin
             FE_pc <= 0;
+            DE_pc <= 0;
+            DE_instruction <= 0;
+            DE_valid <= 0;
         end else begin
             if (DE_open) begin
                 if (~unsafe_executing) begin
@@ -89,9 +97,33 @@ module cpu_pipelined #(
 
     always @(posedge clk) begin
         if (flush_DE) begin
-            DE_pc <= 0;
-            DE_instruction <= 0;
-            DE_valid <= 0;
+            EX_ALU_is_register <= 0;
+            EX_inst_is_ALU <= 0;
+            EX_inst_is_load <= 0;
+            EX_inst_is_store <= 0;
+            EX_inst_is_branch <= 0;
+            EX_inst_is_jal <= 0;
+            EX_inst_is_jalr <= 0;
+            EX_inst_is_lui <= 0;
+            EX_inst_is_auipc <= 0;
+            EX_inst_is_system <= 0;
+
+            EX_rs1 <= 0;
+            EX_rs2 <= 0;
+
+            EX_rd_idx <= 0;
+
+            EX_imm_s <= 0;
+            EX_imm_i <= 0;
+            EX_imm_b <= 0;
+            EX_imm_u <= 0;
+            EX_imm_j <= 0;
+
+            EX_instruction <= 0;
+            EX_begin <= 1'b0;
+            EX_valid <= 1'b0;
+            EX_pc <= 0;
+            EX_pc_unsafe <= 0;
         end else begin
             if (EX_open & DE_valid & ~DE_hazard) begin
                 // Load into execute stage
@@ -212,33 +244,16 @@ module cpu_pipelined #(
 
     always @(posedge clk) begin
         if (flush_EX) begin
-            EX_ALU_is_register <= 0;
-            EX_inst_is_ALU <= 0;
-            EX_inst_is_load <= 0;
-            EX_inst_is_store <= 0;
-            EX_inst_is_branch <= 0;
-            EX_inst_is_jal <= 0;
-            EX_inst_is_jalr <= 0;
-            EX_inst_is_lui <= 0;
-            EX_inst_is_auipc <= 0;
-            EX_inst_is_system <= 0;
-
-            EX_rs1 <= 0;
-            EX_rs2 <= 0;
-
-            EX_rd_idx <= 0;
-
-            EX_imm_s <= 0;
-            EX_imm_i <= 0;
-            EX_imm_b <= 0;
-            EX_imm_u <= 0;
-            EX_imm_j <= 0;
-
-            EX_instruction <= 0;
-            EX_begin <= 1'b0;
-            EX_valid <= 1'b0;
-            EX_pc <= 0;
-            EX_pc_unsafe <= 0;
+            WB_valid <= 0;
+            WB_pc <= 0;
+            WB_value <= 0;
+            WB_rd_idx <= 0;
+            WB_pc_unsafe <= 0;
+            WB_jump_pc <= 0;
+            WB_is_load <= 0;
+            WB_loadstore_size_onehot <= 0;
+            WB_mem_loadstore_offset <= 0;
+            WB_load_signext <= 0;
         end else begin
             if (WB_open) begin
                 if (EX_done & EX_valid) begin
@@ -318,6 +333,7 @@ module cpu_pipelined #(
     reg [1:0] WB_mem_loadstore_offset;
     reg WB_load_signext = 0;
 
+    // Need to wait for writes aswell to ensure r/w consistency on high-latency devices
     wire WB_open = (WB_is_load && WB_valid) ? bus_done : 1; // TODO: WB needs to not be done/open when bus is not done and doing a read!!!!
     reg WB_valid = 0;
     reg [31:0] WB_pc = 0;
@@ -328,12 +344,7 @@ module cpu_pipelined #(
 
     always @(posedge clk) begin
         if (flush_WB) begin
-            WB_valid <= 0;
-            WB_pc <= 0;
-            WB_value <= 0;
-            WB_rd_idx <= 0;
-            WB_pc_unsafe <= 0;
-            WB_jump_pc <= 0;
+
         end else begin
             if (WB_valid && WB_rd_idx != 0) begin
                 registers[WB_rd_idx] <= WB_is_load ? load_value : WB_value;

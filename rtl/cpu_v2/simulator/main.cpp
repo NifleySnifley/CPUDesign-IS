@@ -49,7 +49,7 @@ int simulator_read_word(rv_simulator_t* sim, uint32_t i) {
         (rv_simulator_read_byte(sim, i + 3) << 24);
 }
 
-bool simulator_equals_dut(Vcpu_pl_soc* dut, rv_simulator_t* sim) {
+bool simulator_equals_dut(Vcpu_pl_soc* dut, rv_simulator_t* sim, bool ck_mem) {
     if (sim->pc != dut->rootp->cpu_pl_soc__DOT__core0__DOT__WB_pc) {
         printf("Program counter mismatch sim=%u, dut=%u\n", sim->pc, dut->rootp->cpu_pl_soc__DOT__core0__DOT__WB_pc);
         return false;
@@ -61,15 +61,18 @@ bool simulator_equals_dut(Vcpu_pl_soc* dut, rv_simulator_t* sim) {
         }
     }
 
-    // TODO: Move to segmented memory model
-    // rv_simulator_segmented_memory_segment_t* main_memory = rv_simulator_segmented_memory_get_segment((rv_simulator_segmented_memory_t*)sim->memory_interface.memory, 0);
+    rv_simulator_segmented_memory_segment_t* main_memory = rv_simulator_segmented_memory_get_segment((rv_simulator_segmented_memory_t*)sim->memory_interface.memory, 0);
 
-    // for (int wa = 0; wa < main_memory->size / 4; ++wa) {
-    //     if (simulator_read_word(sim, wa * 4 + main_memory->start_address) != dut->rootp->cpu_pl_soc__DOT__spram__DOT__memory[wa]) {
-    //         printf("Mismatch of Main Memory word @ %x: sim=%u, dut=%u\n", wa * 4, simulator_read_word(sim, wa * 4 + main_memory->start_address), dut->rootp->soc_sim__DOT__mem__DOT__memory[wa]);
-    //         return false;
-    //     }
-    // }
+    // TODO: Fix memory checking (progROM issues...)
+    if (ck_mem) {
+        for (int wa = 0; wa < main_memory->size / 4; ++wa) {
+            if (simulator_read_word(sim, wa * 4 + main_memory->start_address) != dut->rootp->cpu_pl_soc__DOT__spram__DOT__memory[wa]) {
+                printf("Mismatch of Main Memory word @ %x: sim=%u, dut=%u\n", wa * 4, simulator_read_word(sim, wa * 4 + main_memory->start_address), dut->rootp->cpu_pl_soc__DOT__spram__DOT__memory[wa]);
+                return false;
+            }
+        }
+    }
+
 
     // if (spram) {
     //     rv_simulator_segmented_memory_segment_t* spram = rv_simulator_segmented_memory_get_segment((rv_simulator_segmented_memory_t*)sim->memory_interface.memory, 1);
@@ -276,7 +279,7 @@ int main(int argc, char** argv, char** env) {
 
             // Step the simulator ahead but save PC of currently executing instruction
 
-            bool equals = simulator_equals_dut(dut, &simulator) | independent;
+            bool equals = simulator_equals_dut(dut, &simulator, false) | independent;
             if (!equals) {
                 // if (!quiet) {
                 // printf("ERROR: Simulator does not match DUT!\n");

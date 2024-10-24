@@ -5,7 +5,7 @@
 
 module cpu_pl_soc #(
     parameter INIT_H = "",
-    parameter PROGROM_SIZE_W = 8192
+    parameter PROGROM_SIZE_W = 32768
 ) (
     input wire clk,
     input wire rst
@@ -18,7 +18,9 @@ module cpu_pl_soc #(
     wire bus_done;
     wire [3:0] bus_wmask;
 
-    cpu_pipelined core0 (
+    cpu_pipelined #(
+        .PROGROM_SIZE_W(PROGROM_SIZE_W)
+    ) core0 (
         .clk,
         .rst,
         .bus_addr,
