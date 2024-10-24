@@ -106,8 +106,8 @@ module cpu_pipelined #(
                 EX_inst_is_auipc <= DE_opcode == 5'b00101;
                 EX_inst_is_system <= DE_opcode == 5'b11100;
 
-                EX_rs1 <= (WB_has_DE_rs1 ? WB_value : registers[DE_rs1_index]);
-                EX_rs2 <= (WB_has_DE_rs2 ? WB_value : registers[DE_rs2_index]);
+                EX_rs1 <= (WB_has_DE_rs1 ? (WB_is_load ? load_value : WB_value) : registers[DE_rs1_index]);
+                EX_rs2 <= (WB_has_DE_rs2 ? (WB_is_load ? load_value : WB_value) : registers[DE_rs2_index]);
 
                 EX_rd_idx <= DE_instruction[11:7];
 
@@ -207,7 +207,7 @@ module cpu_pipelined #(
         .done(alu_done)
     );
 
-    wire EX_done = (~EX_valid) || (EX_inst_is_ALU & alu_done) || ((EX_inst_is_load && bus_done) || (EX_inst_is_store && bus_done) || EX_inst_is_auipc || EX_inst_is_branch || EX_inst_is_jal || EX_inst_is_jalr || EX_inst_is_system || EX_inst_is_lui);
+    wire EX_done = (~EX_valid) || (EX_inst_is_ALU & alu_done) || ((EX_inst_is_load) || (EX_inst_is_store) || EX_inst_is_auipc || EX_inst_is_branch || EX_inst_is_jal || EX_inst_is_jalr || EX_inst_is_system || EX_inst_is_lui);
     wire EX_has_writeback = ~(EX_inst_is_branch || EX_inst_is_store || EX_inst_is_system);
 
     always @(posedge clk) begin
@@ -240,31 +240,39 @@ module cpu_pipelined #(
             EX_pc <= 0;
             EX_pc_unsafe <= 0;
         end else begin
-            if (EX_done & EX_valid & WB_open) begin
-                WB_pc <= EX_pc;
-                WB_rd_idx <= EX_has_writeback ? EX_rd_idx : '0;
-                WB_pc_unsafe <= EX_pc_unsafe;
-                WB_valid <= 1'b1;
+            if (WB_open) begin
+                if (EX_done & EX_valid) begin
+                    WB_pc <= EX_pc;
+                    WB_rd_idx <= EX_has_writeback ? EX_rd_idx : '0;
+                    WB_pc_unsafe <= EX_pc_unsafe;
 
-                // Output result
-                case (1'b1)
-                    EX_inst_is_ALU: WB_value <= alu_out;
-                    EX_inst_is_lui: WB_value <= EX_imm_u;
-                    EX_inst_is_auipc: WB_value <= EX_pc + EX_imm_u;
-                    (EX_inst_is_jal | EX_inst_is_jalr): WB_value <= EX_pc + 4;
-                    EX_inst_is_load: WB_value <= load_value;
-                    default: WB_value <= '0;
-                endcase
+                    WB_is_load <= EX_inst_is_load;
+                    WB_loadstore_size_onehot <= EX_loadstore_size_onehot;
+                    WB_mem_loadstore_offset <= EX_mem_loadstore_offset;
+                    WB_load_signext <= EX_load_signext;
 
-                if (EX_inst_is_branch) begin
-                    WB_jump_pc <= EX_branch_cond ? (EX_pc + EX_imm_b) : (EX_pc + 4);
-                end else if (EX_inst_is_jal) begin
-                    WB_jump_pc <= EX_pc + EX_imm_j;
-                end else if (EX_inst_is_jalr) begin
-                    WB_jump_pc <= EX_rs1 + EX_imm_i;
+                    WB_valid <= 1'b1;
+
+                    // Output result
+                    case (1'b1)
+                        EX_inst_is_ALU: WB_value <= alu_out;
+                        EX_inst_is_lui: WB_value <= EX_imm_u;
+                        EX_inst_is_auipc: WB_value <= EX_pc + EX_imm_u;
+                        (EX_inst_is_jal | EX_inst_is_jalr): WB_value <= EX_pc + 4;
+                        // EX_inst_is_load: WB_value <= load_value;
+                        default: WB_value <= '0;
+                    endcase
+
+                    if (EX_inst_is_branch) begin
+                        WB_jump_pc <= EX_branch_cond ? (EX_pc + EX_imm_b) : (EX_pc + 4);
+                    end else if (EX_inst_is_jal) begin
+                        WB_jump_pc <= EX_pc + EX_imm_j;
+                    end else if (EX_inst_is_jalr) begin
+                        WB_jump_pc <= EX_rs1 + EX_imm_i;
+                    end
+                end else begin
+                    WB_valid <= 1'b0;
                 end
-            end else begin
-                WB_valid <= 1'b0;
             end
         end
     end
@@ -273,7 +281,7 @@ module cpu_pipelined #(
 
     wire [31:0] loadstore_addr = EX_rs1 + (EX_inst_is_store ? EX_imm_s : EX_imm_i);
     wire [29:0] loadstore_word_addr = loadstore_addr[31:2];
-    wire [ 1:0] mem_loadstore_offset = loadstore_addr[1:0];
+    wire [ 1:0] EX_mem_loadstore_offset = loadstore_addr[1:0];
 
     assign bus_addr = (EX_inst_is_load || EX_inst_is_store) ? loadstore_addr : '0;
 
@@ -282,30 +290,35 @@ module cpu_pipelined #(
 
     // Bytewise shifting for write alignment bytes and half
     assign bus_wdata = {
-        mem_loadstore_offset[0] ? EX_rs2[7:0] : mem_loadstore_offset[1] ? EX_rs2[15:8] : EX_rs2[31:24],
-        mem_loadstore_offset[1] ? EX_rs2[7:0] : EX_rs2[23:16],
-        mem_loadstore_offset[0] ? EX_rs2[7:0] : EX_rs2[15:8],
+        EX_mem_loadstore_offset[0] ? EX_rs2[7:0] : EX_mem_loadstore_offset[1] ? EX_rs2[15:8] : EX_rs2[31:24],
+        EX_mem_loadstore_offset[1] ? EX_rs2[7:0] : EX_rs2[23:16],
+        EX_mem_loadstore_offset[0] ? EX_rs2[7:0] : EX_rs2[15:8],
         EX_rs2[7:0]
     };
 
-    wire [2:0] loadstore_size_onehot = 3'b1 << EX_funct3[1:0];
-    wire load_signext = ~EX_funct3[2];
+    wire [2:0] EX_loadstore_size_onehot = 3'b1 << EX_funct3[1:0];
+    wire EX_load_signext = ~EX_funct3[2];
 
-    assign bus_wmask = (loadstore_size_onehot[2] ? 4'b1111 : 0) | 
-                        (loadstore_size_onehot[1] ? (mem_loadstore_offset[1] ? 4'b1100 : 4'b0011) : 0) |
-                        (loadstore_size_onehot[0] ? (
-                            mem_loadstore_offset[0] ? (mem_loadstore_offset[1] ? 4'b1000:4'b0010): (mem_loadstore_offset[1] ? 4'b0100:4'b0001) 
+    assign bus_wmask = (EX_loadstore_size_onehot[2] ? 4'b1111 : 0) | 
+                        (EX_loadstore_size_onehot[1] ? (EX_mem_loadstore_offset[1] ? 4'b1100 : 4'b0011) : 0) |
+                        (EX_loadstore_size_onehot[0] ? (
+                            EX_mem_loadstore_offset[0] ? (EX_mem_loadstore_offset[1] ? 4'b1000:4'b0010): (EX_mem_loadstore_offset[1] ? 4'b0100:4'b0001) 
                         ) : 0);
 
-    wire [7:0] load_byte = mem_loadstore_offset[0] ? (mem_loadstore_offset[1] ? bus_rdata[31:24]:bus_rdata[15:8]): (mem_loadstore_offset[1] ? bus_rdata[23:16]:bus_rdata[7:0]);
-    wire [15:0] load_half = mem_loadstore_offset[1] ? bus_rdata[31:16] : bus_rdata[15:0];
-    wire [31:0] load_value = (loadstore_size_onehot[0] ? ({load_signext ? {24{load_byte[7]}}:24'b0, load_byte}) : 32'b0) |
-                            (loadstore_size_onehot[1] ? ({load_signext ? {16{load_half[15]}}:16'b0, load_half}) : 32'b0) |
-                            (loadstore_size_onehot[2] ? bus_rdata : 32'b0);
+    wire [7:0] load_byte = WB_mem_loadstore_offset[0] ? (WB_mem_loadstore_offset[1] ? bus_rdata[31:24]:bus_rdata[15:8]): (WB_mem_loadstore_offset[1] ? bus_rdata[23:16]:bus_rdata[7:0]);
+    wire [15:0] load_half = WB_mem_loadstore_offset[1] ? bus_rdata[31:16] : bus_rdata[15:0];
+    wire [31:0] load_value = (WB_loadstore_size_onehot[0] ? ({WB_load_signext ? {24{load_byte[7]}}:24'b0, load_byte}) : 32'b0) |
+                            (WB_loadstore_size_onehot[1] ? ({WB_load_signext ? {16{load_half[15]}}:16'b0, load_half}) : 32'b0) |
+                            (WB_loadstore_size_onehot[2] ? bus_rdata : 32'b0);
+
 
     // Writeback
+    reg WB_is_load = 0;
+    reg [2:0] WB_loadstore_size_onehot = 0;
+    reg [1:0] WB_mem_loadstore_offset;
+    reg WB_load_signext = 0;
 
-    wire WB_open = 1;
+    wire WB_open = (WB_is_load && WB_valid) ? bus_done : 1; // TODO: WB needs to not be done/open when bus is not done and doing a read!!!!
     reg WB_valid = 0;
     reg [31:0] WB_pc = 0;
     reg [31:0] WB_value;
@@ -323,7 +336,7 @@ module cpu_pipelined #(
             WB_jump_pc <= 0;
         end else begin
             if (WB_valid && WB_rd_idx != 0) begin
-                registers[WB_rd_idx] <= WB_value;
+                registers[WB_rd_idx] <= WB_is_load ? load_value : WB_value;
             end
         end
     end

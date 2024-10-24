@@ -100,7 +100,7 @@ module sim_spram #(
     input [31:0] addr,
     input [31:0] wdata,
     output reg [31:0] rdata,
-    output done,
+    output reg done,
     output active
 );
     localparam SIZE = WORDS * 4;
@@ -119,6 +119,7 @@ module sim_spram #(
     wire [31:0] addr_local = addr - BASE_ADDR;
     wire [14:0] addr_internal = addr_local[16:2];
 
+    // reg done = 0;
     always @(posedge clk) begin
         if (ren) rdata <= memory[addr_internal];
         if (wen) begin
@@ -128,11 +129,18 @@ module sim_spram #(
             if (wmask[3]) memory[addr_internal][31:24] <= wdata[31:24];
             rdata <= wdata;
         end
+
+        if (ren | wen) done <= 1;
+        else done <= 0;
     end
 
-    reg [31:0] xact_addr;
-    assign done = active & (xact_addr == addr);
-    always @(posedge clk) begin
-        xact_addr <= addr;
-    end
+    // reg [31:0] xact_delay2 = 0;
+    // reg [31:0] xact_delay1 = 0;
+    // reg [31:0] xact_addr = 0;
+    // assign done = xact_addr == addr;
+    // always @(posedge clk) begin
+    //     xact_delay1 <= addr;
+    //     xact_delay2 <= xact_delay1;
+    //     xact_addr   <= xact_delay2;
+    // end
 endmodule
