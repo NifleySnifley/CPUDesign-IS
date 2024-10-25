@@ -74,16 +74,15 @@ bool simulator_equals_dut(Vcpu_pl_soc* dut, rv_simulator_t* sim, bool ck_mem) {
     }
 
 
-    // if (spram) {
-    //     rv_simulator_segmented_memory_segment_t* spram = rv_simulator_segmented_memory_get_segment((rv_simulator_segmented_memory_t*)sim->memory_interface.memory, 1);
-    //     for (int wa = 0; wa < spram->size / 4; ++wa) {
-    //         uint32_t spramword = simulator_read_word(sim, wa * 4 + spram->start_address);
-    //         if (spramword != dut->rootp->cpu_pl_soc__DOT__spram__DOT__memory[wa]) {
-    //             printf("Mismatch of SPRAM word @ %x: sim=%u, dut=%u\n", wa * 4, spramword, dut->rootp->cpu_pl_soc__DOT__spram__DOT__memory[wa]);
-    //             return false;
-    //         }
+    // rv_simulator_segmented_memory_segment_t* spram = rv_simulator_segmented_memory_get_segment((rv_simulator_segmented_memory_t*)sim->memory_interface.memory, 0);
+    // for (int wa = 0; wa < spram->size / 4; ++wa) {
+    //     uint32_t spramword = simulator_read_word(sim, wa * 4 + spram->start_address);
+    //     if (spramword != dut->rootp->cpu_pl_soc__DOT__core0__DOT__progMEM[wa]) {
+    //         printf("Mismatch of SPRAM word @ %x: sim=%u, dut=%u\n", wa * 4, spramword, dut->rootp->cpu_pl_soc__DOT__core0__DOT__progMEM[wa]);
+    //         return false;
     //     }
     // }
+
 
     return true;
 }
@@ -203,7 +202,7 @@ int main(int argc, char** argv, char** env) {
     rv_simulator_segmented_memory_add_segment(sim_mem, 0, memsize_words * 4, "progRAM", false);
     // if (spram) rv_simulator_segmented_memory_add_segment(sim_mem, spram_baseaddr, spram_words * 4, "SPRAM", false);
 
-    simulator.instr_trace = sim_tracefn;
+    // simulator.instr_trace = sim_tracefn;
     // TODO: Ceiling divide here!
     int binsize_words = rv_simulator_load_memory_from_file(&simulator, memfile, FILETYPE_AUTO, 0) / 4;
     if (verbose) printf("Loading binary, size = %d words\n", binsize_words);
@@ -254,7 +253,7 @@ int main(int argc, char** argv, char** env) {
         }
     }
 
-    dut_pprint_memory(dut);
+    // dut_pprint_memory(dut);
 
     // Run DUT
     bool fail = false;

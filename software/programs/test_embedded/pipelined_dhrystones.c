@@ -386,7 +386,7 @@
  /*#define LOOPS	5000		/* Use this for slow or 16 bit machines */
 // #define LOOPS	50000		/* Use this for slow or 16 bit machines */
 /*#define LOOPS	500000		/* Use this for faster machines */
-#define LOOPS 1
+#define LOOPS 50000
 
 /* Compiler dependent options */
 #undef	NOENUM			/* Define if compiler has no enum's */

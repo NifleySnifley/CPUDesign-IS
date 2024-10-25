@@ -43,11 +43,11 @@ if (args.textonly):
     copy_arglist += [
         "--only-section", ".text"
     ]
-elif (args.dataonly is not None):
+elif (args.dataonly):
     copy_arglist += [
         "-R", ".text"
     ]
-if(subprocess.call(copy_arglist+ [tf, tfbin])):
+if(subprocess.call(copy_arglist + [tf, tfbin])):
     exit(1)
 
 with open(tfbin, 'rb') as bf:

@@ -43,7 +43,7 @@ build/flash_test.hex: flash_test.c build
 
 .PHONY: build/pipelined_dhrystones.hex
 build/pipelined_dhrystones.hex: pipelined_dhrystones.c build
-	$(COMPILE) -T$(LIBDIR)/map_ecp5.ld pipelined_dhrystones.c -o build/pipelined_dhrystones.elf
+	$(COMPILE) -O5 -T$(LIBDIR)/map_ecp5.ld pipelined_dhrystones.c -o build/pipelined_dhrystones.elf
 	$(OBJCOPY) build/pipelined_dhrystones.elf --hex -o build/pipelined_dhrystones.hex
 # 	$(OBJCOPY) -D build/pipelined_dhrystones.elf --hex -o build/pipelined_dhrystones_ram.hex
 
