@@ -163,8 +163,8 @@ module cpu_pipelined #(
                 EX_inst_is_auipc <= DE_opcode == 5'b00101;
                 EX_inst_is_system <= DE_opcode == 5'b11100;
 
-                EX_rs1 <= (WB_has_DE_rs1 ? (WB_is_load ? load_value : WB_value) : registers[DE_rs1_index]);
-                EX_rs2 <= (WB_has_DE_rs2 ? (WB_is_load ? load_value : WB_value) : registers[DE_rs2_index]);
+                EX_rs1 <= (WB_has_DE_rs1 ? WB_value : registers[DE_rs1_index]);
+                EX_rs2 <= (WB_has_DE_rs2 ? WB_value : registers[DE_rs2_index]);
 
                 EX_rd_idx <= DE_instruction[11:7];
 
@@ -264,18 +264,18 @@ module cpu_pipelined #(
         .done(alu_done)
     );
 
-    wire EX_done = (~EX_valid) || (EX_inst_is_ALU & alu_done) || ((EX_inst_is_load) || (EX_inst_is_store) || EX_inst_is_auipc || EX_inst_is_branch || EX_inst_is_jal || EX_inst_is_jalr || EX_inst_is_system || EX_inst_is_lui);
+    wire EX_done = (~EX_valid) || (EX_inst_is_ALU & alu_done) || (EX_inst_is_load || EX_inst_is_store || EX_inst_is_auipc || EX_inst_is_branch || EX_inst_is_jal || EX_inst_is_jalr || EX_inst_is_system || EX_inst_is_lui);
     wire EX_has_writeback = ~(EX_inst_is_branch || EX_inst_is_store || EX_inst_is_system);
 
     always @(posedge clk) begin
         if (flush_EX) begin
             WB_valid <= 0;
             WB_pc <= 0;
-            WB_value <= 0;
+            WB_ex_writeback <= 0;
             WB_rd_idx <= 0;
             WB_pc_unsafe <= 0;
             WB_jump_pc <= 0;
-            WB_is_load <= 0;
+            WB_is_load_store <= 0;
             WB_loadstore_size_onehot <= 0;
             WB_mem_loadstore_offset <= 0;
             WB_load_signext <= 0;
@@ -286,7 +286,7 @@ module cpu_pipelined #(
                     WB_rd_idx <= EX_has_writeback ? EX_rd_idx : '0;
                     WB_pc_unsafe <= EX_pc_unsafe;
 
-                    WB_is_load <= EX_inst_is_load;
+                    WB_is_load_store <= EX_inst_is_load | EX_inst_is_store;
                     WB_loadstore_size_onehot <= EX_loadstore_size_onehot;
                     WB_mem_loadstore_offset <= EX_mem_loadstore_offset;
                     WB_load_signext <= EX_load_signext;
@@ -295,12 +295,12 @@ module cpu_pipelined #(
 
                     // Output result
                     case (1'b1)
-                        EX_inst_is_ALU: WB_value <= alu_out;
-                        EX_inst_is_lui: WB_value <= EX_imm_u;
-                        EX_inst_is_auipc: WB_value <= EX_pc + EX_imm_u;
-                        (EX_inst_is_jal | EX_inst_is_jalr): WB_value <= EX_pc + 4;
-                        // EX_inst_is_load: WB_value <= load_value;
-                        default: WB_value <= '0;
+                        EX_inst_is_ALU: WB_ex_writeback <= alu_out;
+                        EX_inst_is_lui: WB_ex_writeback <= EX_imm_u;
+                        EX_inst_is_auipc: WB_ex_writeback <= EX_pc + EX_imm_u;
+                        (EX_inst_is_jal | EX_inst_is_jalr): WB_ex_writeback <= EX_pc + 4;
+                        // EX_inst_is_load: WB_ex_writeback <= load_value;
+                        default: WB_ex_writeback <= '0;
                     endcase
 
                     if (EX_inst_is_branch) begin
@@ -353,16 +353,17 @@ module cpu_pipelined #(
 
 
     // Writeback
-    reg WB_is_load = 0;
+    reg WB_is_load_store = 0;
     reg [2:0] WB_loadstore_size_onehot = 0;
     reg [1:0] WB_mem_loadstore_offset;
     reg WB_load_signext = 0;
 
     // Need to wait for writes aswell to ensure r/w consistency on high-latency devices
-    wire WB_open = (WB_is_load && WB_valid) ? bus_done : 1; // TODO: WB needs to not be done/open when bus is not done and doing a read!!!!
+    wire WB_open = (WB_is_load_store && WB_valid) ? bus_done : 1; // TODO: WB needs to not be done/open when bus is not done and doing a read!!!!
     reg WB_valid = 0;
     reg [31:0] WB_pc = 0;
-    reg [31:0] WB_value;
+    reg [31:0] WB_ex_writeback;
+    wire [31:0] WB_value = WB_is_load_store ? load_value : WB_ex_writeback;
     reg [4:0] WB_rd_idx = 0;
     reg WB_pc_unsafe = 0;
     reg [31:0] WB_jump_pc = 0;
@@ -372,7 +373,7 @@ module cpu_pipelined #(
 
         end else begin
             if (WB_valid && WB_rd_idx != 0) begin
-                registers[WB_rd_idx] <= WB_is_load ? load_value : WB_value;
+                registers[WB_rd_idx] <= WB_value;
             end
         end
     end
