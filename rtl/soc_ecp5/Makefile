@@ -11,7 +11,7 @@ all: build/$(PROJNAME).svf build/$(PROJNAME).bit
 
 build/$(PROJNAME).json: $(SYNTH_SRCS) build/phony.hex
 # -no-rw-check 
-	yosys -q -p "read_verilog -I./ -I$(COMMONDIR) -I../gpu/rtl -sv $(SYNTH_SRCS); synth_ecp5 -abc9 -top $(PROJNAME) -json $@;" 
+	yosys -q -p "read_verilog -I./ -I$(COMMONDIR) -I../gpu/rtl -sv $(SYNTH_SRCS); synth_ecp5 -no-rw-check -abc9 -top $(PROJNAME) -json $@;" 
 #	yosys -q -p 'read_verilog $(SYNTH_SRCS); synth_ecp5 -top $(PROJNAME) -abc9 -json $@'
 
 build/$(PROJNAME).config: build/$(PROJNAME).json $(LPF)

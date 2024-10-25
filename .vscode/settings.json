@@ -19,7 +19,8 @@
 		"cstdint": "c",
 		"soc_io.h": "c",
 		"soc_core.h": "c",
-		"new": "cpp"
+		"new": "cpp",
+		"cstdlib": "c"
 	},
 	// "workbench.colorTheme": "Xcode Default (Light)"
 }

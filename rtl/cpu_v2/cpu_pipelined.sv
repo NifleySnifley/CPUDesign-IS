@@ -3,7 +3,7 @@
 `endif
 
 module cpu_pipelined #(
-    parameter PROGROM_SIZE_W = 2048,
+    parameter PROGROM_SIZE_W = 8192,
     parameter INIT_H = ""
 ) (
     input wire rst,
@@ -17,10 +17,11 @@ module cpu_pipelined #(
     output wire bus_ren,
     input wire bus_done,
 
-    input wire [31:0] progMEM_addr,
+    input wire [31:0] progMEM_waddr,
     input wire [31:0] progMEM_wdata,
     output reg [31:0] progMEM_rdata,
-    input wire progMEM_wen
+    input wire progMEM_wen,
+    input wire [3:0] progMEM_wmask
 );
     // TODO: Turn progMEM into a L1 instruction cache
     // Keep the modified harvard (for speed) but it would be good to share program & data memory
@@ -34,11 +35,14 @@ module cpu_pipelined #(
     always @(posedge clk) begin
         if (progMEM_wen) begin
             // TODO: Masking
-            progMEM[progMEM_addr] <= progMEM_wdata;
-            progMEM_rdata <= progMEM_wdata;
-        end else begin
-            progMEM_rdata <= progMEM[progMEM_addr];
+            if (progMEM_wmask[0]) progMEM[progMEM_waddr][7:0] <= progMEM_wdata[7:0];
+            if (progMEM_wmask[1]) progMEM[progMEM_waddr][15:8] <= progMEM_wdata[15:8];
+            if (progMEM_wmask[2]) progMEM[progMEM_waddr][23:16] <= progMEM_wdata[23:16];
+            if (progMEM_wmask[3]) progMEM[progMEM_waddr][31:24] <= progMEM_wdata[31:24];
+            // progMEM[progMEM_waddr] <= progMEM_wdata;
+            // progMEM_rdata <= progMEM_wdata;
         end
+        progMEM_rdata <= progMEM[progMEM_waddr];
     end
 
     (* no_rw_check *)

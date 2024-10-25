@@ -384,8 +384,9 @@
 
  /* Accuracy of timings and human fatigue controlled by next two lines */
  /*#define LOOPS	5000		/* Use this for slow or 16 bit machines */
-#define LOOPS	50000		/* Use this for slow or 16 bit machines */
+// #define LOOPS	50000		/* Use this for slow or 16 bit machines */
 /*#define LOOPS	500000		/* Use this for faster machines */
+#define LOOPS 1
 
 /* Compiler dependent options */
 #undef	NOENUM			/* Define if compiler has no enum's */
@@ -461,6 +462,7 @@ extern boolean		Func2();
 
 main() {
     Proc0();
+    asm("ebreak");
     exit(0);
 }
 

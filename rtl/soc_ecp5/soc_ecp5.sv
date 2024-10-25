@@ -15,8 +15,7 @@
 `include "pll_40MHz.sv"
 
 module soc_ecp5 #(
-    parameter PROGSIZE = 8192,
-    parameter MEMSIZE  = 8192
+    parameter MEMSIZE = 25600  // 27648 is the absolute max
 ) (
     input  wire osc_clk25,
     input  wire button,
@@ -54,14 +53,8 @@ module soc_ecp5 #(
         .locked (pll_locked)
     );
 
-
-    wire [31:0] progMEM_addr = 0;
-    wire [31:0] progMEM_wdata = 0;
-    reg [31:0] progMEM_rdata;
-    wire progMEM_wen = 0;
-
     cpu_pipelined #(
-        .PROGROM_SIZE_W(PROGSIZE),
+        .PROGROM_SIZE_W(MEMSIZE),
         .INIT_H("build/phony.hex")
     ) core0 (
         .clk(core_clk),
@@ -74,10 +67,11 @@ module soc_ecp5 #(
         .bus_wen,
         .bus_ren,
 
-        .progMEM_addr,
+        .progMEM_waddr,
         .progMEM_wdata,
         .progMEM_rdata,
-        .progMEM_wen
+        .progMEM_wen,
+        .progMEM_wmask
     );
 
     bus_hub_2 hub (
@@ -106,25 +100,32 @@ module soc_ecp5 #(
     wire [3:0] mem_wmask;
     wire mem_wstrobe;
     wire mem_rstrobe;
-    wire [31:0] mem_rdata;
-    wire mem_done;
-    wire mem_active;
+    wire [31:0] mem_rdata = mem_active ? progMEM_rdata : '0;
+    wire mem_done = 1;  // HACK: Fix this to be "real" done
+    wire mem_active = mem_addr < (MEMSIZE * 4);
 
-    memory #(
-        .INIT_H(""),
-        .SIZE(MEMSIZE),
-        .BASEADDR(32'hf0000000)
-    ) mem (
-        .clk(core_clk),
-        .mem_addr,
-        .mem_wdata,
-        .mem_wmask,
-        .mem_wstrobe,
-        .mem_rstrobe,
-        .mem_rdata,
-        .mem_done,
-        .active(mem_active)
-    );
+    wire [31:0] progMEM_waddr = {2'b0, mem_addr[31:2]};
+    wire [31:0] progMEM_wdata = mem_wdata;
+    wire [3:0] progMEM_wmask = mem_wmask;
+    wire [31:0] progMEM_rdata;
+
+    wire progMEM_wen = mem_wstrobe;
+
+    // memory #(
+    //     .INIT_H(""),
+    //     .SIZE(MEMSIZE),
+    //     .BASEADDR(32'hf0000000)
+    // ) mem (
+    //     .clk(core_clk),
+    //     .mem_addr,
+    //     .mem_wdata,
+    //     .mem_wmask,
+    //     .mem_wstrobe,
+    //     .mem_rstrobe,
+    //     .mem_rdata,
+    //     .mem_done,
+    //     .active(mem_active)
+    // );
 
     wire [31:0] pp_addr;
     wire [31:0] pp_wdata;

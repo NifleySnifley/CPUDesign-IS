@@ -66,8 +66,8 @@ bool simulator_equals_dut(Vcpu_pl_soc* dut, rv_simulator_t* sim, bool ck_mem) {
     // TODO: Fix memory checking (progROM issues...)
     if (ck_mem) {
         for (int wa = 0; wa < main_memory->size / 4; ++wa) {
-            if (simulator_read_word(sim, wa * 4 + main_memory->start_address) != dut->rootp->cpu_pl_soc__DOT__spram__DOT__memory[wa]) {
-                printf("Mismatch of Main Memory word @ %x: sim=%u, dut=%u\n", wa * 4, simulator_read_word(sim, wa * 4 + main_memory->start_address), dut->rootp->cpu_pl_soc__DOT__spram__DOT__memory[wa]);
+            if (simulator_read_word(sim, wa * 4 + main_memory->start_address) != dut->rootp->cpu_pl_soc__DOT__core0__DOT__progMEM[wa]) {
+                printf("Mismatch of Main Memory word @ %x: sim=%u, dut=%u\n", wa * 4, simulator_read_word(sim, wa * 4 + main_memory->start_address), dut->rootp->cpu_pl_soc__DOT__core0__DOT__progMEM[wa]);
                 return false;
             }
         }
@@ -94,10 +94,10 @@ void sim_tracefn(void* sim, const char* insname) {
 }
 
 void dut_pprint_memory(Vcpu_pl_soc* dut) {
-    int num_words = (sizeof(dut->rootp->cpu_pl_soc__DOT__spram__DOT__memory) / 32);
+    int num_words = (sizeof(dut->rootp->cpu_pl_soc__DOT__core0__DOT__progMEM) / 32);
     uint32_t* membuffer = (uint32_t*)calloc(num_words, 4);
     for (int wi = 0; wi < num_words; ++wi)
-        membuffer[wi] = (uint32_t)dut->rootp->cpu_pl_soc__DOT__spram__DOT__memory[wi];
+        membuffer[wi] = (uint32_t)dut->rootp->cpu_pl_soc__DOT__core0__DOT__progMEM[wi];
 
     FILE* hd_proc = popen("hd", "w");
     fwrite(membuffer, 4, num_words, hd_proc);
@@ -195,15 +195,15 @@ int main(int argc, char** argv, char** env) {
     rv_simulator_t simulator;
     constexpr uint32_t memsize_words = (sizeof(dut->rootp->cpu_pl_soc__DOT__core0__DOT__progMEM.m_storage)) / 4;
 
-    constexpr uint32_t spram_baseaddr = 0x00000000;
-    constexpr uint32_t spram_words = 32768;
+    // constexpr uint32_t spram_baseaddr = 0x00000000;
+    // constexpr uint32_t spram_words = 32768;
 
     rv_simulator_init(&simulator);
     rv_simulator_segmented_memory_t* sim_mem = rv_simulator_init_segmented_memory(&simulator);
-    // rv_simulator_segmented_memory_add_segment(sim_mem, 0, memsize_words * 4, "progROM", false);
-    if (spram) rv_simulator_segmented_memory_add_segment(sim_mem, spram_baseaddr, spram_words * 4, "SPRAM", false);
+    rv_simulator_segmented_memory_add_segment(sim_mem, 0, memsize_words * 4, "progRAM", false);
+    // if (spram) rv_simulator_segmented_memory_add_segment(sim_mem, spram_baseaddr, spram_words * 4, "SPRAM", false);
 
-    // simulator.instr_trace = sim_tracefn;
+    simulator.instr_trace = sim_tracefn;
     // TODO: Ceiling divide here!
     int binsize_words = rv_simulator_load_memory_from_file(&simulator, memfile, FILETYPE_AUTO, 0) / 4;
     if (verbose) printf("Loading binary, size = %d words\n", binsize_words);
@@ -216,7 +216,7 @@ int main(int argc, char** argv, char** env) {
     for (int i = 0; i < memsize_words; ++i) {
         uint32_t word = simulator_read_word(&simulator, i * 4);
         dut->rootp->cpu_pl_soc__DOT__core0__DOT__progMEM[i] = word;
-        dut->rootp->cpu_pl_soc__DOT__spram__DOT__memory[i] = word;
+        // dut->rootp->cpu_pl_soc__DOT__spram__DOT__memory[i] = word;
     }
 
     // Reset DUT
@@ -254,6 +254,8 @@ int main(int argc, char** argv, char** env) {
         }
     }
 
+    dut_pprint_memory(dut);
+
     // Run DUT
     bool fail = false;
     vluint64_t run_start = sim_time;
@@ -271,6 +273,7 @@ int main(int argc, char** argv, char** env) {
         sim_time++;
 
         vluint64_t cycles = (sim_time - run_start) / 2;
+        // printf("%d (pc=%x)\n", cycles, simulator.pc);
 
         if (dut->rootp->cpu_pl_soc__DOT__core0__DOT__WB_valid) {
             // uint32_t dut_done_pc = dut->rootp->cpu_pl_soc__DOT__core0__DOT__WB_pc;
@@ -283,7 +286,7 @@ int main(int argc, char** argv, char** env) {
             if (!equals) {
                 // if (!quiet) {
                 // printf("ERROR: Simulator does not match DUT!\n");
-                printf("Instruction failed (pc=%u): %x\n", dut_prevpc, dut->rootp->cpu_pl_soc__DOT__spram__DOT__memory[dut_prevpc / 4]);
+                printf("Instruction failed (pc=%u): %x\n", dut_prevpc, dut->rootp->cpu_pl_soc__DOT__core0__DOT__progMEM[dut_prevpc / 4]);
                 // }
                 fail = true;
                 if (!no_exit_on_fail) break;
