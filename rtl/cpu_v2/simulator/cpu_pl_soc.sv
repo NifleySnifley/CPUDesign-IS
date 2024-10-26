@@ -24,11 +24,15 @@ module cpu_pl_soc #(
     wire [31:0] progMEM_rdata;
     wire progMEM_wen;
 
-    wire debug;
+    wire [3:0] debug;
+    wire de0 = debug[0];
+    wire de1 = debug[1];
+    wire de2 = debug[2];
+    wire de3 = debug[3];
 
     cpu_pipelined #(
         .PROGROM_SIZE_W(MEMSIZE),
-        .INIT_H(INIT_H)
+        .INIT_H("")  // "../../../software/programs/test_embedded/build/ecp5_test.hex"
     ) core0 (
         .clk,
         .rst,

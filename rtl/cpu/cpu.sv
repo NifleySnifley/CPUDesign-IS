@@ -115,7 +115,7 @@ module cpu (
 
     ////////////// BRANCH STUFF //////////////
     (* onehot *)
-    wire [3:0] branch_cond_type_onehot = 3'b1 << funct3[2:1];  // Equal, LT, LT(U)
+    wire [3:0] branch_cond_type_onehot = 4'b1 << funct3[2:1];  // Equal, LT, LT(U)
     wire branch_cond_inverted = funct3[0];  // Flip output
     reg branch_cond = 0;
 

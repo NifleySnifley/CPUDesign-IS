@@ -48,7 +48,7 @@ module alu (
     wire is_division_signed = (onehot_funct3[4] | onehot_funct3[6]);
     reg [63:0] divisor = 0;
     reg [31:0] remainder = 0;
-    reg [31:0] quotient;
+    reg [31:0] quotient = 0;
     reg [5:0] bitctr = 0;
 
     wire negative_dividend = in1[31] & is_division_signed;

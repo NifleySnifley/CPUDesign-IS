@@ -21,9 +21,10 @@ module cpu_pipelined #(
     input wire [31:0] progMEM_wdata,
     output reg [31:0] progMEM_rdata,
     input wire progMEM_wen,
+    // input wire progMEM_ren,
     input wire [3:0] progMEM_wmask,
 
-    output wire debug
+    output wire [3:0] debug
 );
     // TODO: Turn progMEM into a L1 instruction cache
     // Keep the modified harvard (for speed) but it would be good to share program & data memory
@@ -31,12 +32,52 @@ module cpu_pipelined #(
     parameter PROGROM_ADDRBITS = $clog2(PROGROM_SIZE_W);
 
     initial begin
-        if (INIT_H != "") $readmemh(INIT_H, progMEM);
+        if (INIT_H != "") begin
+            int i;
+            for (i = 0; i < PROGROM_SIZE_W; i = i + 1) begin
+                progMEM[i] = '0;
+            end
+            $readmemh(INIT_H, progMEM);
+        end
+    end
+
+    initial begin
+        registers[0]  = 0;
+        registers[1]  = 0;
+        registers[2]  = 0;
+        registers[3]  = 0;
+        registers[4]  = 0;
+        registers[5]  = 0;
+        registers[6]  = 0;
+        registers[7]  = 0;
+        registers[8]  = 0;
+        registers[9]  = 0;
+        registers[10] = 0;
+        registers[11] = 0;
+        registers[12] = 0;
+        registers[13] = 0;
+        registers[14] = 0;
+        registers[15] = 0;
+        registers[16] = 0;
+        registers[17] = 0;
+        registers[18] = 0;
+        registers[19] = 0;
+        registers[20] = 0;
+        registers[21] = 0;
+        registers[22] = 0;
+        registers[23] = 0;
+        registers[24] = 0;
+        registers[25] = 0;
+        registers[26] = 0;
+        registers[27] = 0;
+        registers[28] = 0;
+        registers[29] = 0;
+        registers[30] = 0;
+        registers[31] = 0;
     end
 
     always @(posedge clk) begin
         if (progMEM_wen) begin
-            // TODO: Masking
             if (progMEM_wmask[0]) progMEM[progMEM_waddr][7:0] <= progMEM_wdata[7:0];
             if (progMEM_wmask[1]) progMEM[progMEM_waddr][15:8] <= progMEM_wdata[15:8];
             if (progMEM_wmask[2]) progMEM[progMEM_waddr][23:16] <= progMEM_wdata[23:16];
@@ -68,7 +109,7 @@ module cpu_pipelined #(
     reg [31:0] FE_pc = 0;
 
     wire unsafe_executing = DE_pc_unsafe || EX_pc_unsafe;
-    assign debug = fetch_pc == 32'h28;
+    assign debug = {EX_inst_is_ALU, EX_inst_is_lui, EX_inst_is_jal, clk};
 
     // PC for instruction to fetch
     wire [31:0] fetch_pc = ((WB_pc_unsafe && WB_valid) ? WB_jump_pc : FE_pc);
@@ -77,7 +118,7 @@ module cpu_pipelined #(
     wire [31:0] FE_instr_read = progMEM[fetch_pc[PROGROM_ADDRBITS+1:2]];
     always @(posedge clk) begin
         if (DE_open) begin
-            DE_instruction <= (~flush_FE && ~unsafe_executing) ? FE_instr_read : 0;
+            DE_instruction <= (~flush_FE && ~unsafe_executing) ? FE_instr_read : '0;
         end
     end
 
@@ -108,7 +149,7 @@ module cpu_pipelined #(
     wire DE_open = EX_open & ~DE_hazard;
     // wire DE_flush = EX_flush;
     reg [31:0] DE_pc = 0;
-    reg [31:0] DE_instruction;
+    reg [31:0] DE_instruction = 0;
     wire [4:0] DE_opcode = DE_instruction[6:2];
     reg DE_valid = 0;
     wire DE_pc_unsafe = DE_opcode[4];
@@ -216,11 +257,11 @@ module cpu_pipelined #(
     reg EX_valid = 0;
     reg EX_pc_unsafe = 0;
     reg [31:0] EX_pc = 0;
-    reg [31:0] EX_instruction;
+    reg [31:0] EX_instruction = 0;
     wire [2:0] EX_funct3 = EX_instruction[14:12];
     wire [6:0] EX_funct7 = EX_instruction[31:25];
 
-    wire [3:0] EX_branch_cond_type_onehot = 3'b1 << EX_funct3[2:1];  // Equal, LT, LT(U)
+    wire [3:0] EX_branch_cond_type_onehot = 4'b1 << EX_funct3[2:1];  // Equal, LT, LT(U)
     wire EX_branch_cond_inverted = EX_funct3[0];  // Flip output
     wire EX_branch_cond =  ((EX_branch_cond_type_onehot[0] ? EX_rs1 == EX_rs2 : 1'b0) |
                     (EX_branch_cond_type_onehot[2] ? $signed(
@@ -362,7 +403,7 @@ module cpu_pipelined #(
     // Writeback
     reg WB_is_load_store = 0;
     reg [2:0] WB_loadstore_size_onehot = 0;
-    reg [1:0] WB_mem_loadstore_offset;
+    reg [1:0] WB_mem_loadstore_offset = 0;
     reg WB_load_signext = 0;
 
     // Need to wait for writes aswell to ensure r/w consistency on high-latency devices

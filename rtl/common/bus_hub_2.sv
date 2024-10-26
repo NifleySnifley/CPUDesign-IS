@@ -37,21 +37,33 @@ module bus_hub_2 (
 
     assign host_ready = |device_ready;
 
+    reg [1:0] dev_N_return = 0;
     // Device->Host
-    always_comb begin
+    always @(posedge clk) begin
         casez (device_active)
             2'b01: begin
-                host_data_read = device_data_read[31:0];
+                dev_N_return <= 1;
+                // host_data_read <= device_data_read[31:0];
                 // host_ready = device_ready[0];
             end
             2'b1?: begin
-                host_data_read = device_data_read[63:32];
+                // host_data_read <= device_data_read[63:32];
                 // host_ready = device_ready[1];
+                dev_N_return <= 2;
             end
             default: begin
-                host_data_read = 0;
+                // host_data_read <= 0;
+                dev_N_return <= 0;
                 // host_ready = 1;
             end
+        endcase
+    end
+
+    always_comb begin
+        case (dev_N_return)
+            1: host_data_read = device_data_read[31:0];
+            2: host_data_read = device_data_read[63:32];
+            default: host_data_read = 0;
         endcase
     end
 endmodule

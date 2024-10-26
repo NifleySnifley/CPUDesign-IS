@@ -13,6 +13,8 @@
 
 `include "pll_50MHz.sv"
 `include "pll_40MHz.sv"
+`include "pll_5MHz.sv"
+`include "pll_10MHz.sv"
 
 module soc_ecp5 #(
     parameter MEMSIZE = 8192  // 27648 is the absolute max
@@ -39,32 +41,30 @@ module soc_ecp5 #(
     assign phy_rst_ = 1'b1;
 
     // RESET BUTTON
-    wire rst_press;
-    wire rst;
-
-    debouncer reset_debounce (
-        .clk(osc_clk25),
-        .signal(button),
-        .pressed(rst_press),
-        .state(rst)
-    );
-
+    // wire rst_press;
+    wire rst = ~button;
 
     ////////////////////// SOC SIM //////////////////////
 
-    reg [23:0] clkdivider = 0;
-    always @(posedge osc_clk25) begin
-        clkdivider <= clkdivider + 1;
-    end
-
-    // wire core_clk = osc_clk25;
+    // wire core_clk;
+    wire clk_5m;
     wire pll_locked;
-    wire clk = clkdivider[20];
-    // pll_40MHz pll (
-    //     .clkin  (osc_clk25),
-    //     .clkout0(core_clk),
-    //     .locked (pll_locked)
-    // );
+    pll_10MHz pll (
+        .clkin  (osc_clk25),
+        .clkout0(clk_5m),
+        .locked (pll_locked)
+    );
+
+    reg core_clk = 0;
+    reg [6:0] ctr = 0;
+    always @(posedge clk_5m) begin
+        if (ctr == 9) begin
+            ctr <= 0;
+            core_clk = ~core_clk;
+        end else begin
+            ctr <= ctr + 1;
+        end
+    end
 
     wire [31:0] bus_addr;
     wire [31:0] bus_wdata;
@@ -80,13 +80,13 @@ module soc_ecp5 #(
     wire [31:0] progMEM_rdata;
     wire progMEM_wen;
 
-    wire debug;
+    wire [3:0] debug;
 
     cpu_pipelined #(
         .PROGROM_SIZE_W(MEMSIZE),
-        .INIT_H("build/phony.hex")
+        .INIT_H("../../software/programs/test_embedded/build/ecp5_test.hex")
     ) core0 (
-        .clk,
+        .clk(core_clk),
         .rst,
         .bus_addr,
         .bus_wdata,
@@ -110,11 +110,11 @@ module soc_ecp5 #(
     wire mem_wen;
     wire mem_ren;
     wire [31:0] mem_rdata;
-    reg mem_done;
+    reg mem_done = 0;
     wire mem_active;
 
     reg [31:0] m_x_addr = 0;
-    always @(posedge clk) begin
+    always @(posedge core_clk) begin
         mem_done <= (mem_ren | mem_wen) & mem_active;
     end
 
@@ -128,7 +128,7 @@ module soc_ecp5 #(
     assign progMEM_wen = mem_wen & mem_active;
 
     bus_hub_2 hub (
-        .clk,
+        .clk(core_clk),
         .host_address(bus_addr),
         .host_data_write(bus_wdata),
         .host_write_mask(bus_wmask),
@@ -160,7 +160,7 @@ module soc_ecp5 #(
     assign led = ~parallel_io[0];
 
     parallel_output pp (
-        .clk,
+        .clk(core_clk),
         .addr(pp_addr),
         .wdata(pp_wdata),
         .wmask(pp_wmask),
@@ -172,20 +172,5 @@ module soc_ecp5 #(
         .io(parallel_io)
     );
 
-    // assign {
-    //     J1_1,
-    //     J1_2,
-    //     J1_3,
-    //     J1_5,
-    //     J1_6,
-    //     J1_7,
-    //     J1_8,
-    //     J1_9,
-    //     J1_10,
-    //     J1_11,
-    //     J1_12,
-    //     J1_13,
-    //     J1_14,
-    //     J1_15
-    // } = bus_addr[13+2:2];
+    assign {J1_8, J1_13, J1_14, J1_15} = debug;
 endmodule

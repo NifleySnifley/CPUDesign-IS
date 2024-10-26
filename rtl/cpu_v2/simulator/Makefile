@@ -17,3 +17,6 @@ obj_dir/Vcpu_pl_soc: generate
 
 generate: main.cpp $(HDL_FILES)
 	verilator -cc -I$(VERILOG_DIR) -I../ -I$(VERILOG_DIR)/common --trace-structs --trace-depth 10 --trace --no-trace-params --top cpu_pl_soc $(HDL_FILES) --exe main.cpp ../$(SIM_DIR)/build/rv32i_simulator.o
+
+lint: $(HDL_FILES)
+	verilator --lint-only -Werror-UNUSED -Wall -Wno-DECLFILENAME -Wno-GENUNNAMED -I$(VERILOG_DIR) -I../ -I$(VERILOG_DIR)/common --top cpu_pl_soc $(HDL_FILES)

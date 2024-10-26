@@ -1,7 +1,7 @@
     .section .text.start;
     .global  _start;
 _start:
-    addi     x4, x4, 1
+# addi x4, x4, 1
     li       x1, 200
 
 lp:

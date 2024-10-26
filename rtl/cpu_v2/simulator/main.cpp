@@ -49,9 +49,9 @@ int simulator_read_word(rv_simulator_t* sim, uint32_t i) {
         (rv_simulator_read_byte(sim, i + 3) << 24);
 }
 
-bool simulator_equals_dut(Vcpu_pl_soc* dut, rv_simulator_t* sim, bool ck_mem) {
-    if (sim->pc != dut->rootp->cpu_pl_soc__DOT__core0__DOT__WB_pc) {
-        printf("Program counter mismatch sim=%u, dut=%u\n", sim->pc, dut->rootp->cpu_pl_soc__DOT__core0__DOT__WB_pc);
+bool simulator_equals_dut(Vcpu_pl_soc* dut, rv_simulator_t* sim, bool ck_mem, uint32_t sim_prevpc, uint32_t dut_prevpc) {
+    if (sim_prevpc != dut_prevpc) {
+        printf("Program counter mismatch sim=%u, dut=%u\n", sim_prevpc, dut_prevpc);
         return false;
     };
     for (int r = 0; r < 32; ++r) {
@@ -211,12 +211,18 @@ int main(int argc, char** argv, char** env) {
         exit(EXIT_ERROR);
     }
 
+    dut->eval();
+
+
     // Copy initialization memory from sim to DUT
     for (int i = 0; i < memsize_words; ++i) {
         uint32_t word = simulator_read_word(&simulator, i * 4);
         dut->rootp->cpu_pl_soc__DOT__core0__DOT__progMEM[i] = word;
         // dut->rootp->cpu_pl_soc__DOT__spram__DOT__memory[i] = word;
     }
+
+    // dut_pprint_memory(dut);
+    // rv_simulator_pprint_registers(&simulator);
 
     // Reset DUT
     while (sim_time < RESET_TIME) {
@@ -259,9 +265,13 @@ int main(int argc, char** argv, char** env) {
     bool fail = false;
     vluint64_t run_start = sim_time;
     std::chrono::time_point start_time = std::chrono::high_resolution_clock::now();
-    uint32_t dut_prevpc = 0;
+    // uint32_t dut_prevpc = 0;
 
     while (true) {
+        bool instruction_complete = dut->rootp->cpu_pl_soc__DOT__core0__DOT__WB_open && dut->rootp->cpu_pl_soc__DOT__core0__DOT__WB_valid;
+        uint32_t dut_prevpc = dut->rootp->cpu_pl_soc__DOT__core0__DOT__WB_pc;
+        // if (instruction_complete) printf("Completed instruction %x\n", dut_prevpc);
+
         dut->clk = 0;
         dut->eval();
         if (tracefile != nullptr)m_trace->dump(sim_time);
@@ -274,14 +284,16 @@ int main(int argc, char** argv, char** env) {
         vluint64_t cycles = (sim_time - run_start) / 2;
         // printf("%d (pc=%x)\n", cycles, simulator.pc);
 
-        if (dut->rootp->cpu_pl_soc__DOT__core0__DOT__WB_open && dut->rootp->cpu_pl_soc__DOT__core0__DOT__WB_valid) {
+        if (instruction_complete) {
             // uint32_t dut_done_pc = dut->rootp->cpu_pl_soc__DOT__core0__DOT__WB_pc;
 
             instructions_executed += 1;
+            uint32_t sim_prevpc = simulator.pc;
+            bool bkpt = rv_simulator_step(&simulator);
 
             // Step the simulator ahead but save PC of currently executing instruction
 
-            bool equals = simulator_equals_dut(dut, &simulator, false) | independent;
+            bool equals = simulator_equals_dut(dut, &simulator, false, sim_prevpc, dut_prevpc) | independent;
             if (!equals) {
                 // if (!quiet) {
                 // printf("ERROR: Simulator does not match DUT!\n");
@@ -295,10 +307,6 @@ int main(int argc, char** argv, char** env) {
                 if (!quiet) printf("Reached instruction limit, finishing.\n");
                 break;
             }
-            dut_prevpc = dut->rootp->cpu_pl_soc__DOT__core0__DOT__WB_pc;
-
-            uint32_t sim_prevpc = simulator.pc;
-            bool bkpt = rv_simulator_step(&simulator);
 
             if (verbose) printf("Instruction completed @ cycle %ld (pc=%u, sim_pc=%u)\n", cycles, dut_prevpc, sim_prevpc);
             // Now, both should be in sync!
@@ -315,6 +323,7 @@ int main(int argc, char** argv, char** env) {
                     rv_simulator_pprint_registers(&simulator);
                 if (exit_on_bkpt) break;
             };
+            // dut_prevpc = dut->rootp->cpu_pl_soc__DOT__core0__DOT__WB_pc;
         }
     }
 
