@@ -1,5 +1,5 @@
 PROJNAME=soc_ecp5
-SYNTH_SRCS=../cpu_v2/cpu_pipelined.sv ../alu/alu.sv ./$(PROJNAME).sv ../common/memory.sv ../common/bus_hub_4.sv ../common/bus_hub_2.sv ../common/bus_hub_3.sv ../common/bus_hub_5.sv ../fpga/parallel_port.sv
+SYNTH_SRCS=../cpu_v2/cpu_pipelined.sv ../alu/alu.sv ./$(PROJNAME).sv ../common/bus_hub_2.sv ../fpga/parallel_port.sv
 COMMONDIR=../common
 
 PACKAGE=CABGA256
@@ -11,7 +11,7 @@ all: build/$(PROJNAME).svf build/$(PROJNAME).bit
 
 build/$(PROJNAME).json: $(SYNTH_SRCS) build/phony.hex
 # -no-rw-check 
-	yosys -q -p "read_verilog -I./ -I$(COMMONDIR) -I../gpu/rtl -sv $(SYNTH_SRCS); synth_ecp5 -no-rw-check -abc9 -top $(PROJNAME) -json $@;" 
+	yosys -q -p "read_verilog -I./ -I$(COMMONDIR) -sv $(SYNTH_SRCS); synth_ecp5 -abc9 -top $(PROJNAME) -json $@;" 
 #	yosys -q -p 'read_verilog $(SYNTH_SRCS); synth_ecp5 -top $(PROJNAME) -abc9 -json $@'
 
 build/$(PROJNAME).config: build/$(PROJNAME).json $(LPF)

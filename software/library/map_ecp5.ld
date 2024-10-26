@@ -1,5 +1,5 @@
 STACK_SIZE = DEFINED(__stack_size__) ? __stack_size__ : 0x0800;
-BRAM_SIZE = 0x19000;
+BRAM_SIZE = 0x8000;
 
 ENTRY(_start)
 

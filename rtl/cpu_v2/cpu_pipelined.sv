@@ -21,7 +21,9 @@ module cpu_pipelined #(
     input wire [31:0] progMEM_wdata,
     output reg [31:0] progMEM_rdata,
     input wire progMEM_wen,
-    input wire [3:0] progMEM_wmask
+    input wire [3:0] progMEM_wmask,
+
+    output wire debug
 );
     // TODO: Turn progMEM into a L1 instruction cache
     // Keep the modified harvard (for speed) but it would be good to share program & data memory
@@ -45,7 +47,7 @@ module cpu_pipelined #(
         progMEM_rdata <= progMEM[progMEM_waddr];
     end
 
-    (* no_rw_check *)
+    // (* no_rw_check *)
     reg [31:0] registers[31:0];
     initial begin
         registers[0] = 0;
@@ -66,6 +68,7 @@ module cpu_pipelined #(
     reg [31:0] FE_pc = 0;
 
     wire unsafe_executing = DE_pc_unsafe || EX_pc_unsafe;
+    assign debug = fetch_pc == 32'h28;
 
     // PC for instruction to fetch
     wire [31:0] fetch_pc = ((WB_pc_unsafe && WB_valid) ? WB_jump_pc : FE_pc);
@@ -366,7 +369,7 @@ module cpu_pipelined #(
     wire WB_open = (WB_is_load_store && WB_valid) ? bus_done : 1; // TODO: WB needs to not be done/open when bus is not done and doing a read!!!!
     reg WB_valid = 0;
     reg [31:0] WB_pc = 0;
-    reg [31:0] WB_ex_writeback;
+    reg [31:0] WB_ex_writeback = 0;
     wire [31:0] WB_value = WB_is_load_store ? load_value : WB_ex_writeback;
     reg [4:0] WB_rd_idx = 0;
     reg WB_pc_unsafe = 0;

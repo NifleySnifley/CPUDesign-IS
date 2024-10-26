@@ -8,7 +8,7 @@ module bus_hub_2 (
     input wire host_ren,
     input wire host_wen,
     output reg [32-1:0] host_data_read,
-    output reg host_ready,
+    output wire host_ready,
 
     // Device ports * 2
     output wire [32*2-1:0] device_address,
@@ -30,26 +30,28 @@ module bus_hub_2 (
             assign device_address[(i+1)*32-1:i*32] = host_address;
             assign device_data_write[(i+1)*32-1:i*32] = host_data_write;
             assign device_write_mask[(i+1)*4-1:i*4] = host_write_mask;
-			assign device_wen[i] = selected ? host_wen : 0;
-			assign device_ren[i] = selected ? host_ren : 0;
+            assign device_wen[i] = selected ? host_wen : 0;
+            assign device_ren[i] = selected ? host_ren : 0;
         end
     endgenerate
-    
+
+    assign host_ready = |device_ready;
+
     // Device->Host
     always_comb begin
-		casez(device_active)                                
-			2'b01: begin
-				host_data_read = device_data_read[31:0];
-				host_ready = device_ready[0];
-			end
-			2'b1?: begin
-				host_data_read = device_data_read[63:32];
-				host_ready = device_ready[1];
-			end  
-			default: begin
-				host_data_read = 0;
-				host_ready = 1;
-			end
-		endcase
-	end
+        casez (device_active)
+            2'b01: begin
+                host_data_read = device_data_read[31:0];
+                // host_ready = device_ready[0];
+            end
+            2'b1?: begin
+                host_data_read = device_data_read[63:32];
+                // host_ready = device_ready[1];
+            end
+            default: begin
+                host_data_read = 0;
+                // host_ready = 1;
+            end
+        endcase
+    end
 endmodule

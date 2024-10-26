@@ -15,27 +15,57 @@
 `include "pll_40MHz.sv"
 
 module soc_ecp5 #(
-    parameter MEMSIZE = 25600  // 27648 is the absolute max
+    parameter MEMSIZE = 8192  // 27648 is the absolute max
 ) (
     input  wire osc_clk25,
     input  wire button,
     output wire led,
-    output wire phy_rst_
+    output wire phy_rst_,
+    output wire J1_1,
+    output wire J1_2,
+    output wire J1_3,
+    output wire J1_5,
+    output wire J1_6,
+    output wire J1_7,
+    output wire J1_8,
+    output wire J1_9,
+    output wire J1_10,
+    output wire J1_11,
+    output wire J1_12,
+    output wire J1_13,
+    output wire J1_14,
+    output wire J1_15
 );
     assign phy_rst_ = 1'b1;
 
     // RESET BUTTON
     wire rst_press;
-    wire rst_state;
+    wire rst;
 
     debouncer reset_debounce (
         .clk(osc_clk25),
         .signal(button),
         .pressed(rst_press),
-        .state(rst_state)
+        .state(rst)
     );
 
-    // Memory interface
+
+    ////////////////////// SOC SIM //////////////////////
+
+    reg [23:0] clkdivider = 0;
+    always @(posedge osc_clk25) begin
+        clkdivider <= clkdivider + 1;
+    end
+
+    // wire core_clk = osc_clk25;
+    wire pll_locked;
+    wire clk = clkdivider[20];
+    // pll_40MHz pll (
+    //     .clkin  (osc_clk25),
+    //     .clkout0(core_clk),
+    //     .locked (pll_locked)
+    // );
+
     wire [31:0] bus_addr;
     wire [31:0] bus_wdata;
     wire [31:0] bus_rdata;
@@ -44,21 +74,20 @@ module soc_ecp5 #(
     wire bus_done;
     wire [3:0] bus_wmask;
 
-    // wire core_clk = osc_clk25;
-    wire pll_locked;
-    wire core_clk;
-    pll_50MHz pll (
-        .clkin  (osc_clk25),
-        .clkout0(core_clk),
-        .locked (pll_locked)
-    );
+    wire [31:0] progMEM_waddr;
+    wire [3:0] progMEM_wmask;
+    wire [31:0] progMEM_wdata;
+    wire [31:0] progMEM_rdata;
+    wire progMEM_wen;
+
+    wire debug;
 
     cpu_pipelined #(
         .PROGROM_SIZE_W(MEMSIZE),
         .INIT_H("build/phony.hex")
     ) core0 (
-        .clk(core_clk),
-        .rst(rst_state | ~pll_locked),
+        .clk,
+        .rst,
         .bus_addr,
         .bus_wdata,
         .bus_wmask,
@@ -71,11 +100,35 @@ module soc_ecp5 #(
         .progMEM_wdata,
         .progMEM_rdata,
         .progMEM_wen,
-        .progMEM_wmask
+        .progMEM_wmask,
+        .debug
     );
 
+    wire [31:0] mem_addr;
+    wire [31:0] mem_wdata;
+    wire [3:0] mem_wmask;
+    wire mem_wen;
+    wire mem_ren;
+    wire [31:0] mem_rdata;
+    reg mem_done;
+    wire mem_active;
+
+    reg [31:0] m_x_addr = 0;
+    always @(posedge clk) begin
+        mem_done <= (mem_ren | mem_wen) & mem_active;
+    end
+
+    assign mem_rdata = mem_active ? progMEM_rdata : '0;
+    // assign mem_done = 0;  // HACK: Fix this to be "real" done
+    assign mem_active = mem_addr < (MEMSIZE * 4);
+
+    assign progMEM_waddr = {2'b0, mem_addr[31:2]};
+    assign progMEM_wdata = mem_wdata;
+    assign progMEM_wmask = mem_wmask;
+    assign progMEM_wen = mem_wen & mem_active;
+
     bus_hub_2 hub (
-        .clk(core_clk),
+        .clk,
         .host_address(bus_addr),
         .host_data_write(bus_wdata),
         .host_write_mask(bus_wmask),
@@ -87,45 +140,12 @@ module soc_ecp5 #(
         .device_address({mem_addr, pp_addr}),
         .device_data_write({mem_wdata, pp_wdata}),
         .device_write_mask({mem_wmask, pp_wmask}),
-        .device_ren({mem_rstrobe, pp_ren}),
-        .device_wen({mem_wstrobe, pp_wen}),
+        .device_ren({mem_ren, pp_ren}),
+        .device_wen({mem_wen, pp_wen}),
         .device_ready({mem_done, pp_done}),
         .device_data_read({mem_rdata, pp_rdata}),
         .device_active({mem_active, pp_active})
     );
-
-    // TODO: Find a better way to make all these WIRES!!!
-    wire [31:0] mem_addr;
-    wire [31:0] mem_wdata;
-    wire [3:0] mem_wmask;
-    wire mem_wstrobe;
-    wire mem_rstrobe;
-    wire [31:0] mem_rdata = mem_active ? progMEM_rdata : '0;
-    wire mem_done = 1;  // HACK: Fix this to be "real" done
-    wire mem_active = mem_addr < (MEMSIZE * 4);
-
-    wire [31:0] progMEM_waddr = {2'b0, mem_addr[31:2]};
-    wire [31:0] progMEM_wdata = mem_wdata;
-    wire [3:0] progMEM_wmask = mem_wmask;
-    wire [31:0] progMEM_rdata;
-
-    wire progMEM_wen = mem_wstrobe;
-
-    // memory #(
-    //     .INIT_H(""),
-    //     .SIZE(MEMSIZE),
-    //     .BASEADDR(32'hf0000000)
-    // ) mem (
-    //     .clk(core_clk),
-    //     .mem_addr,
-    //     .mem_wdata,
-    //     .mem_wmask,
-    //     .mem_wstrobe,
-    //     .mem_rstrobe,
-    //     .mem_rdata,
-    //     .mem_done,
-    //     .active(mem_active)
-    // );
 
     wire [31:0] pp_addr;
     wire [31:0] pp_wdata;
@@ -137,10 +157,10 @@ module soc_ecp5 #(
     wire pp_active;
 
     wire [31:0] parallel_io;
-    assign led = parallel_io[0];
+    assign led = ~parallel_io[0];
 
     parallel_output pp (
-        .clk(core_clk),
+        .clk,
         .addr(pp_addr),
         .wdata(pp_wdata),
         .wmask(pp_wmask),
@@ -151,4 +171,21 @@ module soc_ecp5 #(
         .active(pp_active),
         .io(parallel_io)
     );
+
+    // assign {
+    //     J1_1,
+    //     J1_2,
+    //     J1_3,
+    //     J1_5,
+    //     J1_6,
+    //     J1_7,
+    //     J1_8,
+    //     J1_9,
+    //     J1_10,
+    //     J1_11,
+    //     J1_12,
+    //     J1_13,
+    //     J1_14,
+    //     J1_15
+    // } = bus_addr[13+2:2];
 endmodule

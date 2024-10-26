@@ -274,7 +274,7 @@ int main(int argc, char** argv, char** env) {
         vluint64_t cycles = (sim_time - run_start) / 2;
         // printf("%d (pc=%x)\n", cycles, simulator.pc);
 
-        if (dut->rootp->cpu_pl_soc__DOT__core0__DOT__WB_valid) {
+        if (dut->rootp->cpu_pl_soc__DOT__core0__DOT__WB_open && dut->rootp->cpu_pl_soc__DOT__core0__DOT__WB_valid) {
             // uint32_t dut_done_pc = dut->rootp->cpu_pl_soc__DOT__core0__DOT__WB_pc;
 
             instructions_executed += 1;

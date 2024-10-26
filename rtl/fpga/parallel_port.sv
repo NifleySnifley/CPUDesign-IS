@@ -8,12 +8,12 @@ module parallel_output #(
     input wire wen,
     input wire ren,
     output wire [31:0] rdata,  // Read data output
-    output wire ready,  // Read or write done
+    output reg ready,  // Read or write done
     output wire active,
 
     output reg [31:0] io
 );
-    assign ready = 1;
+
     assign rdata = 0;
     initial io = 0;
 
@@ -26,5 +26,6 @@ module parallel_output #(
             if (wmask[2]) io[23:16] <= wdata[23:16];
             if (wmask[3]) io[31:24] <= wdata[31:24];
         end
+        ready <= ren | wen;
     end
 endmodule
