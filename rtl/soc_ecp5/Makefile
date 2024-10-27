@@ -29,6 +29,9 @@ build/phony.hex:
 lint:
 	verilator --lint-only -DVERILATOR_LINT -Werror-UNUSED -Wall -Wno-DECLFILENAME -Wno-GENUNNAMED -I$(COMMONDIR) -I../ -I./ --top soc_ecp5 $(SYNTH_SRCS)
 
+sim: 
+	yosys -q -p "read_verilog -I./ -I$(COMMONDIR) -sv $(SYNTH_SRCS); script semisynth.ys; sim -resetn button -clock osc_clk25 -n 10000 -fst soc_ecp5_sim.fst soc_ecp5"
+
 prog: build/$(PROJNAME).bit
 	ecpprog -S $<
 

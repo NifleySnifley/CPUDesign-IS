@@ -47,26 +47,28 @@ module soc_ecp5 #(
     ////////////////////// SOC SIM //////////////////////
 
     // wire core_clk;
-    wire clk_5m;
+    // wire clk_5m;
     wire pll_locked;
-`ifndef VERILATOR_LINT
-    pll_10MHz pll (
-        .clkin  (osc_clk25),
-        .clkout0(clk_5m),
-        .locked (pll_locked)
-    );
-`endif
+    // `ifndef VERILATOR_LINT
+    //     pll_10MHz pll (
+    //         .clkin  (osc_clk25),
+    //         .clkout0(clk_5m),
+    //         .locked (pll_locked)
+    //     );
+    // `endif
 
     reg core_clk = 0;
     reg [6:0] ctr = 0;
-    always @(posedge clk_5m) begin
-        if (ctr == 9) begin
+    always @(posedge osc_clk25) begin
+        if (ctr == 24) begin
             ctr <= 0;
             core_clk = ~core_clk;
         end else begin
             ctr <= ctr + 1;
         end
     end
+
+    // wire core_clk = osc_clk25;
 
     wire [31:0] bus_addr;
     wire [31:0] bus_wdata;

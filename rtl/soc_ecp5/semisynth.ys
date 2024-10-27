@@ -1,0 +1,21 @@
+    proc
+    flatten
+    tribuf    -logic
+    deminout
+    opt_expr
+    opt_clean
+    check
+    opt       -nodffe -nosdff
+    fsm
+    opt
+    wreduce
+    peepopt
+    opt_clean
+    share
+# techmap -map +/cmp2lut.v -D LUT_WIDTH=4
+    opt_expr
+    opt_clean
+# alumacc
+    opt
+# memory -nomap
+    opt_clean

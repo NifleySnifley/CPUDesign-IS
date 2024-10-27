@@ -32,13 +32,15 @@ module cpu_pipelined #(
     parameter PROGROM_ADDRBITS = $clog2(PROGROM_SIZE_W);
 
     initial begin
-        if (INIT_H != "") begin
-            // int i;
-            // for (i = 0; i < PROGROM_SIZE_W; i = i + 1) begin
-            //     progMEM[i] = '0;
-            // end
-            $readmemh(INIT_H, progMEM);
-        end
+        // if (INIT_H != "") begin
+        //     // int i;
+        //     // for (i = 0; i < PROGROM_SIZE_W; i = i + 1) begin
+        //     //     progMEM[i] = '0;
+        //     // end
+        //     $readmemh(INIT_H, progMEM);
+        // end
+        $readmemh("../../software/programs/test_embedded/build/ecp5_test.hex", progMEM);
+        // $readmemh("build/phony.hex", progMEM);
     end
 
     initial begin
@@ -115,10 +117,10 @@ module cpu_pipelined #(
     wire [31:0] fetch_pc = ((WB_pc_unsafe && WB_valid) ? WB_jump_pc : FE_pc);
 
     // HACK: NECCESARY FOR INFERRENCE OF progMEM AS BRAM
-    // wire [31:0] FE_instr_read = progMEM[fetch_pc[PROGROM_ADDRBITS+1:2]];
+    wire [31:0] FE_instr_read = progMEM[fetch_pc[PROGROM_ADDRBITS+1:2]];
     always @(posedge clk) begin
         if (DE_open) begin
-            DE_instruction <= (~flush_FE && ~unsafe_executing) ? progMEM[fetch_pc[PROGROM_ADDRBITS+1:2]] : '0;
+            DE_instruction <= (~flush_FE && ~unsafe_executing) ? FE_instr_read : '0;
         end
     end
 
