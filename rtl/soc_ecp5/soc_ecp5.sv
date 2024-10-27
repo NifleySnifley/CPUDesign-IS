@@ -49,11 +49,13 @@ module soc_ecp5 #(
     // wire core_clk;
     wire clk_5m;
     wire pll_locked;
+`ifndef VERILATOR_LINT
     pll_10MHz pll (
         .clkin  (osc_clk25),
         .clkout0(clk_5m),
         .locked (pll_locked)
     );
+`endif
 
     reg core_clk = 0;
     reg [6:0] ctr = 0;
@@ -113,7 +115,6 @@ module soc_ecp5 #(
     reg mem_done = 0;
     wire mem_active;
 
-    reg [31:0] m_x_addr = 0;
     always @(posedge core_clk) begin
         mem_done <= (mem_ren | mem_wen) & mem_active;
     end

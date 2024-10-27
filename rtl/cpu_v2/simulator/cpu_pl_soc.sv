@@ -32,7 +32,7 @@ module cpu_pl_soc #(
 
     cpu_pipelined #(
         .PROGROM_SIZE_W(MEMSIZE),
-        .INIT_H("")  // "../../../software/programs/test_embedded/build/ecp5_test.hex"
+        .INIT_H("../../../software/programs/test_embedded/build/ecp5_test.hex")
     ) core0 (
         .clk,
         .rst,
@@ -61,7 +61,6 @@ module cpu_pl_soc #(
     reg mem_done;
     wire mem_active;
 
-    reg [31:0] m_x_addr = 0;
     always @(posedge clk) begin
         mem_done <= (mem_ren | mem_wen) & mem_active;
     end

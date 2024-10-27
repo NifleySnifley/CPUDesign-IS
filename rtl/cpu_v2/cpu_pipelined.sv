@@ -33,10 +33,10 @@ module cpu_pipelined #(
 
     initial begin
         if (INIT_H != "") begin
-            int i;
-            for (i = 0; i < PROGROM_SIZE_W; i = i + 1) begin
-                progMEM[i] = '0;
-            end
+            // int i;
+            // for (i = 0; i < PROGROM_SIZE_W; i = i + 1) begin
+            //     progMEM[i] = '0;
+            // end
             $readmemh(INIT_H, progMEM);
         end
     end
@@ -109,16 +109,16 @@ module cpu_pipelined #(
     reg [31:0] FE_pc = 0;
 
     wire unsafe_executing = DE_pc_unsafe || EX_pc_unsafe;
-    assign debug = {EX_inst_is_ALU, EX_inst_is_lui, EX_inst_is_jal, clk};
+    assign debug = {DE_valid, EX_valid, WB_valid, unsafe_executing};
 
     // PC for instruction to fetch
     wire [31:0] fetch_pc = ((WB_pc_unsafe && WB_valid) ? WB_jump_pc : FE_pc);
 
     // HACK: NECCESARY FOR INFERRENCE OF progMEM AS BRAM
-    wire [31:0] FE_instr_read = progMEM[fetch_pc[PROGROM_ADDRBITS+1:2]];
+    // wire [31:0] FE_instr_read = progMEM[fetch_pc[PROGROM_ADDRBITS+1:2]];
     always @(posedge clk) begin
         if (DE_open) begin
-            DE_instruction <= (~flush_FE && ~unsafe_executing) ? FE_instr_read : '0;
+            DE_instruction <= (~flush_FE && ~unsafe_executing) ? progMEM[fetch_pc[PROGROM_ADDRBITS+1:2]] : '0;
         end
     end
 

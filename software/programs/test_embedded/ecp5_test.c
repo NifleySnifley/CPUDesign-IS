@@ -11,9 +11,9 @@ int main() {
 		asm("nop");
 		// delay_ms(1000);
 		PARALLEL_IO_B[0] = 0;
-		asm("nop");
-		asm("nop");
-		asm("nop");
+		// asm("nop");
+		// asm("nop");
+		// asm("nop");
 		// delay_ms(1000);
 		// delay_ms(1000);
 	}
