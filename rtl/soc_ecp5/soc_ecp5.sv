@@ -17,7 +17,7 @@
 `include "pll_10MHz.sv"
 
 module soc_ecp5 #(
-    parameter MEMSIZE = 8192  // 27648 is the absolute max
+    parameter MEMSIZE = 25600  // 27648 is the absolute max
 ) (
     input  wire osc_clk25,
     input  wire button,

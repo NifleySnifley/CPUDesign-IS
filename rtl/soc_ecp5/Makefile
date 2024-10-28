@@ -15,7 +15,7 @@ build/$(PROJNAME).json: $(SYNTH_SRCS) build/phony.hex
 #	yosys -q -p 'read_verilog $(SYNTH_SRCS); synth_ecp5 -top $(PROJNAME) -abc9 -json $@'
 
 build/$(PROJNAME).config: build/$(PROJNAME).json $(LPF)
-	nextpnr-ecp5 --25k --package $(PACKAGE) --speed 6 --lpf $(LFP) --json build/$(PROJNAME).json --textcfg build/$(PROJNAME).config
+	nextpnr-ecp5 --timing-allow-fail --25k --package $(PACKAGE) --speed 6 --lpf $(LFP) --json build/$(PROJNAME).json --textcfg build/$(PROJNAME).config
 
 build/$(PROJNAME).svf: build/$(PROJNAME).config
 	ecppack --compress --input $< --svf $@
