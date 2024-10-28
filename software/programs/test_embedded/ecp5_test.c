@@ -6,15 +6,9 @@
 int main() {
 	while (1) {
 		PARALLEL_IO_B[0] = 1;
-		asm("nop");
-		asm("nop");
-		asm("nop");
-		// delay_ms(1000);
+		delay_ms(500);
 		PARALLEL_IO_B[0] = 0;
-		// asm("nop");
-		// asm("nop");
-		// asm("nop");
-		// delay_ms(1000);
+		delay_ms(500);
 		// delay_ms(1000);
 	}
 

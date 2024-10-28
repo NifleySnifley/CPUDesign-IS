@@ -29,7 +29,7 @@ build/upduino_main.hex: upduino_main.c build
 	
 .PHONY: build/ecp5_test.hex
 build/ecp5_test.hex: ecp5_test.c build
-	$(COMPILE) -Os -DF_CPU=50000000 -T$(LIBDIR)/map_ecp5.ld ecp5_test.c -o build/ecp5_test.elf
+	$(COMPILE) -Os -DF_CPU=50000000 -DCPU_PIPELINED -T$(LIBDIR)/map_ecp5.ld ecp5_test.c -o build/ecp5_test.elf
 	$(OBJCOPY) build/ecp5_test.elf --hex -o build/ecp5_test.hex
 
 .PHONY: build/cgol.hex

@@ -20,7 +20,8 @@
 		"soc_io.h": "c",
 		"soc_core.h": "c",
 		"new": "cpp",
-		"cstdlib": "c"
+		"cstdlib": "c",
+		"stdlib.h": "c"
 	},
 	// "workbench.colorTheme": "Xcode Default (Light)"
 }

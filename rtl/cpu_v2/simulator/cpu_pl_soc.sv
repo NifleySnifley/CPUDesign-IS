@@ -24,11 +24,11 @@ module cpu_pl_soc #(
     wire [31:0] progMEM_rdata;
     wire progMEM_wen;
 
-    wire [3:0] debug;
-    wire de0 = debug[0];
-    wire de1 = debug[1];
-    wire de2 = debug[2];
-    wire de3 = debug[3];
+    // wire [3:0] debug;
+    // wire de0 = debug[0];
+    // wire de1 = debug[1];
+    // wire de2 = debug[2];
+    // wire de3 = debug[3];
 
     cpu_pipelined #(
         .PROGROM_SIZE_W(MEMSIZE),
@@ -48,8 +48,7 @@ module cpu_pl_soc #(
         .progMEM_wdata,
         .progMEM_rdata,
         .progMEM_wen,
-        .progMEM_wmask,
-        .debug
+        .progMEM_wmask
     );
 
     wire [31:0] mem_addr;

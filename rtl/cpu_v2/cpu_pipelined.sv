@@ -2,7 +2,7 @@
 `include "../alu/alu.sv"
 `endif
 
-`include "rom.sv"
+// `include "rom.sv"
 
 module cpu_pipelined #(
     parameter PROGROM_SIZE_W = 8192,
@@ -23,46 +23,29 @@ module cpu_pipelined #(
     input wire [31:0] progMEM_wdata,
     output reg [31:0] progMEM_rdata,
     input wire progMEM_wen,
-    // input wire progMEM_ren,
-    input wire [3:0] progMEM_wmask,
+    input wire [3:0] progMEM_wmask
 
-    output wire [3:0] debug
+    // output wire [3:0] debug
 );
     // TODO: Turn progMEM into a L1 instruction cache
     // Keep the modified harvard (for speed) but it would be good to share program & data memory
+
+    // NOTE: Specifying ram_style explicitly here makes sure that instead of overloading 
+    // yosys with FF/LUT RAMs, it just fails synthesis if anything isn't right to use DP16KD
+    (* ram_style = "block" *)
     reg [31:0] progMEM[PROGROM_SIZE_W-1:0];
     parameter PROGROM_ADDRBITS = $clog2(PROGROM_SIZE_W);
 
     initial begin
-        // if (INIT_H != "") begin
-        //     // int i;
-        //     // for (i = 0; i < PROGROM_SIZE_W; i = i + 1) begin
-        //     //     progMEM[i] = '0;
-        //     // end
-        //     $readmemh(INIT_H, progMEM);
-        // end
-        $readmemh("../../software/programs/test_embedded/build/ecp5_test.hex", progMEM);
-        // $readmemh("build/phony.hex", progMEM);
-    end
-
-    reg [3:0] debugreg = 0;
-    assign debug = {debugreg};
-
-    wire dbg_flag1 = DE_instruction == 32'h00c000ef;
-    wire dbg_flag2 = DE_instruction == 32'h0000f7b7;
-    wire dbg_flag3 = DE_instruction == 32'h00100713;
-    wire dbg_flag4 = DE_instruction == 32'h00e78023;
-
-    // wire dbg_flag1 = DE_pc == 32'h28;
-    // wire dbg_flag2 = DE_pc == 32'h34;
-    // wire dbg_flag3 = DE_pc == 32'h38;
-    // wire dbg_flag4 = DE_pc == 32'h3c;
-    always @(posedge clk) begin
-        if (rst) begin
-            debugreg <= 0;
-        end else begin
-            debugreg <= debugreg | {dbg_flag4, dbg_flag3, dbg_flag2, dbg_flag1};
+        if (INIT_H != "") begin
+            // int i;
+            // for (i = 0; i < PROGROM_SIZE_W; i = i + 1) begin
+            //     progMEM[i] = '0;
+            // end
+            $readmemh(INIT_H, progMEM);
         end
+        // $readmemh("../../software/programs/test_embedded/build/ecp5_test.hex", progMEM);
+        // $readmemh("build/phony.hex", progMEM);
     end
 
     initial begin
@@ -137,35 +120,23 @@ module cpu_pipelined #(
 
     // PC for instruction to fetch
     wire [31:0] fetch_pc = ((WB_pc_unsafe && WB_valid) ? WB_jump_pc : FE_pc);
-
-    // HACK: NECCESARY FOR INFERRENCE OF progMEM AS BRAM
-    // wire [31:0] FE_instr_read = progMEM[fetch_pc[PROGROM_ADDRBITS+1:2]];
-    // wire [31:0] FE_instr_read;
-    // // always @(posedge clk) begin
-    // //     if (DE_open) begin
-    // //         DE_instruction <= (~flush_FE && ~unsafe_executing) ? FE_instr_read : '0;
-    // //     end
-    // // end
-
-    // rom program_ROM (
-    //     .addr(fetch_pc),
-    //     .data(FE_instr_read),
-    // );
+    reg [31:0] fetch_data;
+    always @(posedge clk) begin
+        if (~flush_FE && DE_open && ~unsafe_executing)
+            DE_instruction_reg <= progMEM[fetch_pc[PROGROM_ADDRBITS+1:2]];
+    end
 
     always @(posedge clk) begin
         if (flush_FE) begin
             FE_pc <= 0;
             DE_pc <= 0;
-            DE_instruction <= 0;
+            // DE_instruction <= 0;
             DE_valid <= 0;
         end else begin
             if (DE_open) begin
                 if (~unsafe_executing) begin
-                    // HACK: DE_instruction writing "belongs" here
-                    // DE_instruction <= FE_instr_read;
                     // DE_instruction <= progMEM[fetch_pc[PROGROM_ADDRBITS+1:2]];
-
-                    DE_instruction <= progMEM[fetch_pc[PROGROM_ADDRBITS+1:2]];
+                    // DE_instruction <= fetch_data;
                     FE_pc <= fetch_pc + 4;
                     DE_pc <= fetch_pc;
 
@@ -173,7 +144,7 @@ module cpu_pipelined #(
 
                     DE_valid <= 1'b1;
                 end else begin
-                    DE_instruction <= '0;
+                    // DE_instruction <= '0;
                     DE_valid <= 1'b0;
                 end
             end
@@ -184,7 +155,8 @@ module cpu_pipelined #(
     wire DE_open = EX_open & ~DE_hazard;
     // wire DE_flush = EX_flush;
     reg [31:0] DE_pc = 0;
-    reg [31:0] DE_instruction = 0;
+    reg [31:0] DE_instruction_reg = 0;
+    wire [31:0] DE_instruction = DE_valid ? DE_instruction_reg : '0;
     wire [4:0] DE_opcode = DE_instruction[6:2];
     reg DE_valid = 0;
     wire DE_pc_unsafe = DE_opcode[4];

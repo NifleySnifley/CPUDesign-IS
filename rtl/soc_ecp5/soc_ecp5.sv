@@ -46,27 +46,29 @@ module soc_ecp5 #(
 
     ////////////////////// SOC SIM //////////////////////
 
-    // wire core_clk;
-    // wire clk_5m;
+    wire core_clk;
     wire pll_locked;
-    // `ifndef VERILATOR_LINT
-    //     pll_10MHz pll (
-    //         .clkin  (osc_clk25),
-    //         .clkout0(clk_5m),
-    //         .locked (pll_locked)
-    //     );
-    // `endif
+`ifndef YOSYS_SIM
+    pll_50MHz pll (
+        .clkin  (osc_clk25),
+        .clkout0(core_clk),
+        .locked (pll_locked)
+    );
+`else
+    assign core_clk   = osc_clk25;
+    assign pll_locked = 1;
+`endif
 
-    reg core_clk = 0;
-    reg [6:0] ctr = 0;
-    always @(posedge osc_clk25) begin
-        if (ctr == 24) begin
-            ctr <= 0;
-            core_clk = ~core_clk;
-        end else begin
-            ctr <= ctr + 1;
-        end
-    end
+    // reg core_clk = 0;
+    // reg [6:0] ctr = 0;
+    // always @(posedge osc_clk25) begin
+    //     if (ctr == 24) begin
+    //         ctr <= 0;
+    //         core_clk = ~core_clk;
+    //     end else begin
+    //         ctr <= ctr + 1;
+    //     end
+    // end
 
     // wire core_clk = osc_clk25;
 
@@ -84,14 +86,15 @@ module soc_ecp5 #(
     wire [31:0] progMEM_rdata;
     wire progMEM_wen;
 
-    wire [3:0] debug;
+    // wire [3:0] debug;
 
     cpu_pipelined #(
         .PROGROM_SIZE_W(MEMSIZE),
-        .INIT_H("../../software/programs/test_embedded/build/ecp5_test.hex")
+        // .INIT_H("../../software/programs/test_embedded/build/ecp5_test.hex")
+        .INIT_H("build/phony.hex")
     ) core0 (
         .clk(core_clk),
-        .rst,
+        .rst(rst | ~pll_locked),
         .bus_addr,
         .bus_wdata,
         .bus_wmask,
@@ -104,8 +107,8 @@ module soc_ecp5 #(
         .progMEM_wdata,
         .progMEM_rdata,
         .progMEM_wen,
-        .progMEM_wmask,
-        .debug
+        .progMEM_wmask
+        // .debug
     );
 
     wire [31:0] mem_addr;
@@ -175,5 +178,5 @@ module soc_ecp5 #(
         .io(parallel_io)
     );
 
-    assign {J1_8, J1_13, J1_14, J1_15} = debug;
+    // assign {J1_8, J1_13, J1_14, J1_15} = debug;
 endmodule
