@@ -1,4 +1,4 @@
-module bus_hub_2 (
+module bus_hub_2_pl (
     input wire clk,
 
     // Host (controller) port
@@ -8,7 +8,7 @@ module bus_hub_2 (
     input wire host_ren,
     input wire host_wen,
     output reg [32-1:0] host_data_read,
-    output reg host_ready,
+    output wire host_ready,
 
     // Device ports * 2
     output wire [32*2-1:0] device_address,
@@ -35,21 +35,25 @@ module bus_hub_2 (
         end
     endgenerate
 
+    reg [$clog2(2+1)-1:0] dev_n_selected = 0;
+
+    assign host_ready = (dev_n_selected == 0) ? 1'b1 : |(device_active & device_ready);
+
     // Device->Host
-    always_comb begin
+    always @(posedge clk) begin
         casez (device_active)
-            2'b01: begin
-                host_data_read = device_data_read[31:0];
-                host_ready = device_ready[0];
-            end
-            2'b1?: begin
-                host_data_read = device_data_read[63:32];
-                host_ready = device_ready[1];
-            end
-            default: begin
-                host_data_read = 0;
-                host_ready = 1;
-            end
+            2'b01:   dev_n_selected <= 1;
+            2'b1?:   dev_n_selected <= 2;
+            default: dev_n_selected <= 0;
         endcase
     end
+
+    always_comb begin
+        case (dev_n_selected)
+            1: host_data_read = device_data_read[31:0];
+            2: host_data_read = device_data_read[63:32];
+            default: host_data_read = 0;
+        endcase
+    end
+
 endmodule

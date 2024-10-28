@@ -1,5 +1,23 @@
 # RISC-V CPU Design Independent Study
 
+Software, hardware designs, and notes from my CPU design/computer architecture independent study. The goal of this independent study project was to design a fully functional and standards-compliant RISC-V `rv32im` microprocessor and SoC.
+
+## Current Achievements:
+
+- Pipelined `rv32im` CPU and SoC capable of running on a ColorLight 5A-75B board (Lattice ECP5 LFE5U-25F) at 50MHz. 33.386 MIPS @ 50MHz, with the Dhrystone benchmark (1.5 CPI).
+
+- Multi-cycle `rv32im` CPU and SoC capable of running on an Upduino board (Lattice ICE40UP5K) at 25MHz (overclocked). 4.7MIPS according @ 25MHz with the Dhrystone benchmark (5.32 CPI)
+
+- 2-bit-color memory-mapped text mode VGA display adapter (640x480, 8x16 bitmap font, fg&bg color)
+
+- Memory-mapped parallel IO and SPI host controller
+
+- SPI Flash memory bootloader for Upduino SoC (flash memory->SPRAM)
+
+- `rv32im` simulator written in C, side-by-side comparative verification by simulation of HDL designs (Verilator) alongside the software simulator. Running the official RISC-V `rv32im` test suite.
+
+- SDL-based emulator for the Upduino SoC with VGA display emulation.
+
 ### Improvements
 
 - [X] Add SRAM support as a bus device for stack memory

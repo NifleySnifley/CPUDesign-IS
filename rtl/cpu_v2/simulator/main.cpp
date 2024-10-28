@@ -16,6 +16,8 @@ extern "C" {
 #include "../../../software/simulator/src/rv32i_simulator.h"
 }
 
+#define F_CPU 50000000.f
+
 #define MAX_SIM_TIME 500
 #define EXIT_ERROR 1
 #define EXIT_FAIL 2
@@ -293,7 +295,7 @@ int main(int argc, char** argv, char** env) {
 
             // Step the simulator ahead but save PC of currently executing instruction
 
-            bool equals = simulator_equals_dut(dut, &simulator, false, sim_prevpc, dut_prevpc) | independent;
+            bool equals = independent || simulator_equals_dut(dut, &simulator, false, sim_prevpc, dut_prevpc);
             if (!equals) {
                 // if (!quiet) {
                 // printf("ERROR: Simulator does not match DUT!\n");
@@ -358,6 +360,9 @@ int main(int argc, char** argv, char** env) {
         double cycps = ((double)cycles_total / (double)ms) * 1000;
         printf("\tSimulation time (ms): %ld\n", ms);
         printf("\tAvg. instructions per sim-second: %f\n", insps);
+        double cycle_time_s = float(cycles_total) / F_CPU;
+        double MIPS = (instructions_executed / cycle_time_s) / 1e6;
+        printf("\tEstimated MIPS: %.3f\n", MIPS);
         printf("\tAvg. cycles per sim-second: %f\n", cycps);
     }
 

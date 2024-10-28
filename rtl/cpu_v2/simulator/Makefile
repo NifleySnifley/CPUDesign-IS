@@ -1,5 +1,5 @@
 VERILOG_DIR=../..
-HDL_FILES=cpu_pl_soc.sv $(VERILOG_DIR)/alu/alu.sv $(VERILOG_DIR)/common/memory.sv $(VERILOG_DIR)/common/memory_spram.sv  $(VERILOG_DIR)/cpu_v2/cpu_pipelined.sv $(VERILOG_DIR)/common/bus_hub_1.sv $(VERILOG_DIR)/common/bus_hub_2.sv $(VERILOG_DIR)/fpga/parallel_port.sv
+HDL_FILES=cpu_pl_soc.sv $(VERILOG_DIR)/alu/alu.sv $(VERILOG_DIR)/common/memory.sv $(VERILOG_DIR)/common/memory_spram.sv  $(VERILOG_DIR)/cpu_v2/cpu_pipelined.sv $(VERILOG_DIR)/common/bus_hub_1.sv $(VERILOG_DIR)/common/bus_hub_2_pl.sv $(VERILOG_DIR)/fpga/parallel_port.sv
 SIM_DIR=../../../software/simulator
 ASSEMBLER=$(SIM_DIR)/asm2bin.py
 PROGRAM_FILE=../tests/program.S
