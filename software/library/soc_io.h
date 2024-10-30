@@ -4,8 +4,8 @@
 #include <stdint.h>
 #include "stdbool.h"
 
-#define PARALLEL_IO *((volatile uint32_t*)0xf000)
-#define PARALLEL_IO_B ((volatile uint8_t*)0xf000)
+#define PARALLEL_IO *((volatile uint32_t*)0x80000000)
+#define PARALLEL_IO_B ((volatile uint8_t*)0x80000000)
 #define PARALLEL_IO_SIZE 4
 
 #define GPIO_W ((volatile uint32_t*)0xA000)

@@ -1,5 +1,5 @@
 module parallel_output #(
-    parameter ADDR = 32'hf000
+    parameter ADDR = 32'h80000000
 ) (
     input wire clk,
     input wire [31:0] addr,
@@ -14,7 +14,7 @@ module parallel_output #(
     output reg [31:0] io
 );
 
-    assign rdata = 0;
+    assign rdata = io;
     initial io = 0;
 
     assign active = (addr[31:2] == ADDR[31:2]);

@@ -23,20 +23,20 @@ module soc_ecp5 #(
     input  wire button,
     output wire led,
     output wire phy_rst_,
-    output wire J1_1,
-    output wire J1_2,
-    output wire J1_3,
-    output wire J1_5,
-    output wire J1_6,
-    output wire J1_7,
-    output wire J1_8,
-    output wire J1_9,
-    output wire J1_10,
-    output wire J1_11,
-    output wire J1_12,
-    output wire J1_13,
-    output wire J1_14,
-    output wire J1_15
+    output wire HUB75_R0,
+    output wire HUB75_G0,
+    output wire HUB75_B0,
+    output wire HUB75_R1,
+    output wire HUB75_G1,
+    output wire HUB75_B1,
+    output wire HUB75_E,
+    output wire HUB75_A,
+    output wire HUB75_B,
+    output wire HUB75_C,
+    output wire HUB75_D,
+    output wire HUB75_CLK,
+    output wire HUB75_STB,
+    output wire HUB75_OE
 );
     assign phy_rst_ = 1'b1;
 
@@ -165,6 +165,11 @@ module soc_ecp5 #(
     wire [31:0] parallel_io;
     assign led = ~parallel_io[0];
 
+    wire [7:0] parallel_b_0 = parallel_io[7:0];
+    wire [7:0] parallel_b_1 = parallel_io[15:8];
+    wire [7:0] parallel_b_2 = parallel_io[23:16];
+    wire [7:0] parallel_b_3 = parallel_io[31:24];
+
     parallel_output pp (
         .clk(core_clk),
         .addr(pp_addr),
@@ -178,5 +183,13 @@ module soc_ecp5 #(
         .io(parallel_io)
     );
 
+    // For easy single-cycle access
+    assign HUB75_CLK = parallel_b_3[0];
+
+    // Second byte, color
+    assign {HUB75_B1, HUB75_B0, HUB75_G1, HUB75_G0, HUB75_R1, HUB75_R0} = parallel_b_1[5:0];
+
+    // Third byte, control
+    assign {HUB75_OE, HUB75_STB, HUB75_E, HUB75_D, HUB75_C, HUB75_B, HUB75_A} = parallel_b_2[6:0];
     // assign {J1_8, J1_13, J1_14, J1_15} = debug;
 endmodule

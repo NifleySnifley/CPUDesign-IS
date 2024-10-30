@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 import tempfile
 import subprocess
+import shutil
 
 import argparse
 parser = argparse.ArgumentParser()
@@ -30,11 +31,13 @@ tfbin = td/'out.bin'
 
 if (args.assemble):
     if(os.system(f"riscv32-unknown-elf-gcc -march=rv32i -mabi=ilp32 -nostdlib -ffreestanding -T{ldfile} {args.input} -o {tf}")):
+        shutil.rmtree(td)
         exit(1)
-else:
+else:   
     tf = args.input
 
 if(args.dissasemble and subprocess.call([f"riscv32-unknown-elf-objdump",'-d','-M', 'no-aliases', tf])):
+    shutil.rmtree(td)
     exit(1)
     # print(out1.decode('ascii'))
 
@@ -48,6 +51,7 @@ elif (args.dataonly):
         "-R", ".text"
     ]
 if(subprocess.call(copy_arglist + [tf, tfbin])):
+    shutil.rmtree(td)
     exit(1)
 
 with open(tfbin, 'rb') as bf:
@@ -83,7 +87,8 @@ with open(tfbin, 'rb') as bf:
                 bstr = bin(i)[2:].rjust(32, '0')
                 f.write(f"{bstr[::1]}\n")
             f.flush()
-            
+
+shutil.rmtree(td)
 
 # with open(args.output, 'wb') as f:
     # f.write(out)
