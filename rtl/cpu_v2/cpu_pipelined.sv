@@ -37,15 +37,17 @@ module cpu_pipelined #(
     parameter PROGROM_ADDRBITS = $clog2(PROGROM_SIZE_W);
 
     initial begin
+`ifdef YOSYS_SIM
+        int i;
+        for (i = 0; i < PROGROM_SIZE_W; i = i + 1) begin
+            progMEM[i] = '0;
+        end
+        $readmemh("../../software/programs/bitbang_hub75/build/hub75.hex", progMEM);
+`else
         if (INIT_H != "") begin
-            // int i;
-            // for (i = 0; i < PROGROM_SIZE_W; i = i + 1) begin
-            //     progMEM[i] = '0;
-            // end
             $readmemh(INIT_H, progMEM);
         end
-        // $readmemh("../../software/programs/test_embedded/build/ecp5_test.hex", progMEM);
-        // $readmemh("build/phony.hex", progMEM);
+`endif
     end
 
     initial begin

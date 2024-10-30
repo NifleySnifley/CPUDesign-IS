@@ -88,7 +88,6 @@ module soc_ecp5 #(
 
     cpu_pipelined #(
         .PROGROM_SIZE_W(MEMSIZE),
-        // .INIT_H("../../software/programs/test_embedded/build/ecp5_test.hex")
         .INIT_H("build/phony.hex")
     ) core0 (
         .clk(core_clk),

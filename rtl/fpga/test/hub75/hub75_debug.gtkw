@@ -1,0 +1,52 @@
+[*]
+[*] GTKWave Analyzer v3.3.116 (w)1999-2023 BSI
+[*] Wed Oct 30 19:33:26 2024
+[*]
+[dumpfile] "/home/nifley/Documents/CPUDesign-IS/rtl/fpga/test/hub75/dump.vcd"
+[dumpfile_mtime] "Wed Oct 30 19:31:05 2024"
+[dumpfile_size] 725280
+[savefile] "/home/nifley/Documents/CPUDesign-IS/rtl/fpga/test/hub75/hub75_debug.gtkw"
+[timestart] 0
+[size] 1386 821
+[pos] -1 -1
+*-16.000000 447000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] hub75_driver.
+[sst_width] 278
+[signals_width] 190
+[sst_expanded] 1
+[sst_vpaned_height] 234
+@28
+hub75_driver.clk
+@200
+-
+@400000024
+hub75_driver.h_state[2:0]
+@24
+hub75_driver.buffer_address[12:0]
+@200
+-
+@24
+hub75_driver.row_2[4:0]
+hub75_driver.col[5:0]
+@200
+-
+@28
+hub75_driver.R0
+hub75_driver.G0
+hub75_driver.B0
+hub75_driver.R1
+hub75_driver.G1
+hub75_driver.B1
+@200
+-
+@28
+hub75_driver.ROWSEL[4:0]
+@200
+-
+@29
+hub75_driver.CLK_HUB75
+@28
+hub75_driver.LATCH
+hub75_driver.OE
+[pattern_trace] 1
+[pattern_trace] 0
