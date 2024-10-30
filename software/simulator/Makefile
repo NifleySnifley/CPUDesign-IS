@@ -3,7 +3,7 @@ FONTCONVERTER=python3 ../../rtl/graphics/font_packer.py
 
 .PHONY: test
 
-run: build/sim_cli
+run: build/sim_cli build/sim_emulator
 	build/sim_cli -o memory.bin -r registers.csv ../programs/test_baremetal/test_main.bin
 
 build/sim_emulator: build src/sim_emulator.c build/rv32i_simulator.o build/font.bin

@@ -73,7 +73,7 @@ module cpu_pl_soc #(
     assign progMEM_wmask = mem_wmask;
     assign progMEM_wen = mem_wen & mem_active;
 
-    bus_hub_2 hub (
+    bus_hub_2_pl hub (
         .clk,
         .host_address(bus_addr),
         .host_data_write(bus_wdata),

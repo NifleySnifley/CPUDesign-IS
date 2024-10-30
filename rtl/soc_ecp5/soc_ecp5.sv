@@ -5,9 +5,7 @@
 `include "../cpu_v2/cpu_pipelined.sv"
 `include "../common/memory.sv"
 `include "../common/memory_spram.sv"
-`include "../common/bus_hub_1.sv"
-`include "../common/bus_hub_2.sv"
-`include "../common/bus_hub_3.sv"
+`include "../common/bus_hub_2_pl.sv"
 `include "../fpga/parallel_port.sv"
 `endif
 
@@ -133,7 +131,7 @@ module soc_ecp5 #(
     assign progMEM_wmask = mem_wmask;
     assign progMEM_wen = mem_wen & mem_active;
 
-    bus_hub_2 hub (
+    bus_hub_2_pl hub (
         .clk(core_clk),
         .host_address(bus_addr),
         .host_data_write(bus_wdata),

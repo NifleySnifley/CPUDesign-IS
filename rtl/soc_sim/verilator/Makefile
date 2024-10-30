@@ -6,6 +6,9 @@ PROGRAM_FILE=program.S
 
 .PHONY: run
 
+test: obj_dir/Vsoc_sim
+	python3 ./run_tests.py
+
 run:  obj_dir/Vsoc_sim obj_dir/memory.bin
 	obj_dir/Vsoc_sim -v -d -l256 -t soc_sim.vcd obj_dir/memory.bin
 
