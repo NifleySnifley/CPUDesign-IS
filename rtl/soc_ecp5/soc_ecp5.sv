@@ -6,6 +6,7 @@
 `include "../common/memory.sv"
 `include "../common/memory_spram.sv"
 `include "../common/bus_hub_2_pl.sv"
+`include "../common/bus_hub_3_pl.sv"
 `include "../fpga/parallel_port.sv"
 `endif
 
@@ -15,7 +16,7 @@
 `include "pll_10MHz.sv"
 
 module soc_ecp5 #(
-    parameter MEMSIZE = 25600  // 27648 is the absolute max
+    parameter MEMSIZE = 12800  // 27648 is the absolute max
 ) (
     input  wire osc_clk25,
     input  wire button,
@@ -130,7 +131,7 @@ module soc_ecp5 #(
     assign progMEM_wmask = mem_wmask;
     assign progMEM_wen = mem_wen & mem_active;
 
-    bus_hub_2_pl hub (
+    bus_hub_3_pl hub (
         .clk(core_clk),
         .host_address(bus_addr),
         .host_data_write(bus_wdata),
@@ -140,14 +141,14 @@ module soc_ecp5 #(
         .host_wen(bus_wen),
         .host_ren(bus_ren),
 
-        .device_address({mem_addr, pp_addr}),
-        .device_data_write({mem_wdata, pp_wdata}),
-        .device_write_mask({mem_wmask, pp_wmask}),
-        .device_ren({mem_ren, pp_ren}),
-        .device_wen({mem_wen, pp_wen}),
-        .device_ready({mem_done, pp_done}),
-        .device_data_read({mem_rdata, pp_rdata}),
-        .device_active({mem_active, pp_active})
+        .device_address({mem_addr, pp_addr, disp_addr}),
+        .device_data_write({mem_wdata, pp_wdata, disp_wdata}),
+        .device_write_mask({mem_wmask, pp_wmask, disp_wmask}),
+        .device_ren({mem_ren, pp_ren, disp_ren}),
+        .device_wen({mem_wen, pp_wen, disp_wen}),
+        .device_ready({mem_done, pp_done, disp_ready}),
+        .device_data_read({mem_rdata, pp_rdata, disp_rdata}),
+        .device_active({mem_active, pp_active, disp_active})
     );
 
     wire [31:0] pp_addr;
@@ -180,13 +181,48 @@ module soc_ecp5 #(
         .io(parallel_io)
     );
 
+    wire [31:0] disp_addr;
+    wire [31:0] disp_wdata;
+    wire [3:0] disp_wmask;
+    wire disp_wen;
+    wire disp_ren;
+    wire [31:0] disp_rdata;
+    wire disp_ready;
+    wire disp_active;
+
+    hub75_driver display (
+        .clk(core_clk),
+
+        // Bus device
+        .addr(disp_addr),
+        .wdata(disp_wdata),
+        .wmask(disp_wmask),
+        .wen(disp_wen),
+        .ren(disp_ren),
+        .rdata(disp_rdata),
+        .ready(disp_ready),
+        .active(disp_active),
+
+        // HUB75 Interface
+        .R0(HUB75_R0),
+        .R1(HUB75_R1),
+        .G0(HUB75_G0),
+        .G1(HUB75_G1),
+        .B0(HUB75_B0),
+        .B1(HUB75_B1),
+        .ROWSEL({HUB75_E, HUB75_D, HUB75_C, HUB75_B, HUB75_A}),
+        .CLK_HUB75(HUB75_CLK),
+        .LATCH(HUB75_STB),
+        .OE(HUB75_OE)
+    );
+
     // For easy single-cycle access
-    assign HUB75_CLK = parallel_b_3[0];
+    // assign HUB75_CLK = parallel_b_3[0];
 
-    // Second byte, color
-    assign {HUB75_B1, HUB75_B0, HUB75_G1, HUB75_G0, HUB75_R1, HUB75_R0} = parallel_b_1[5:0];
+    // // Second byte, color
+    // assign {HUB75_B1, HUB75_B0, HUB75_G1, HUB75_G0, HUB75_R1, HUB75_R0} = parallel_b_1[5:0];
 
-    // Third byte, control
-    assign {HUB75_OE, HUB75_STB, HUB75_E, HUB75_D, HUB75_C, HUB75_B, HUB75_A} = parallel_b_2[6:0];
+    // // Third byte, control
+    // assign {HUB75_OE, HUB75_STB, HUB75_E, HUB75_D, HUB75_C, HUB75_B, HUB75_A} = parallel_b_2[6:0];
     // assign {J1_8, J1_13, J1_14, J1_15} = debug;
 endmodule

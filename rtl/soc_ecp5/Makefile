@@ -1,5 +1,5 @@
 PROJNAME=soc_ecp5
-SYNTH_SRCS=../cpu_v2/cpu_pipelined.sv ../alu/alu.sv ./$(PROJNAME).sv ../common/bus_hub_2_pl.sv ../fpga/parallel_port.sv
+SYNTH_SRCS=../cpu_v2/cpu_pipelined.sv ../alu/alu.sv ./$(PROJNAME).sv ../common/bus_hub_2_pl.sv ../common/bus_hub_3_pl.sv ../fpga/parallel_port.sv ../fpga/hub75_driver.sv
 COMMONDIR=../common
 
 PACKAGE=CABGA256

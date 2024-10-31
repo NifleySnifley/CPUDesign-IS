@@ -14,7 +14,7 @@ module hub75_driver #(
     input wire wen,
     input wire ren,
     output reg [31:0] rdata,
-    output wire ready,
+    output reg ready,
     output wire active,
 
     // HUB75 Interface
@@ -26,12 +26,13 @@ module hub75_driver #(
     output wire B1,
     output wire [ADDRBITS-1:0] ROWSEL,
     output wire CLK_HUB75,
-    output reg LATCH,  // Latches on rising edge
+    output wire LATCH,  // Latches on rising edge
     output wire OE  // Active low
 );
     localparam PWM_BITS = 8;
     localparam BUFFER_SIZE_W = ROWS * COLS * 2;
     // Two buffers (A and B)
+    (* ram_style = "block" *)
     reg [PWM_BITS*3-1:0] buffer[BUFFER_SIZE_W-1:0];
     reg [31:0] control = 0;  // buffer_A default (0)
 
@@ -46,56 +47,53 @@ module hub75_driver #(
     localparam BUFFER_ADDRBITS = $clog2(BUFFER_SIZE_W);
 
     wire [29:0] word_addr = addr[31:2];
-    assign active = (addr >= BASEADDR) && (addr < (BASEADDR + N_WORDS));
+    assign active = (addr >= BASEADDR) && (addr < (BASEADDR + N_WORDS * 4));
     wire [29:0] local_word_addr = word_addr - BASEADDR[31:2];
 
     wire [BUFFER_ADDRBITS-1:0] buf_addr = local_word_addr[BUFFER_ADDRBITS-1:0];
 
     // Bus interface
-    always @(posedge clk) begin
-        if (active) begin
-            if (local_word_addr < BUFFER_SIZE_W) begin
-                // Buffer A
-                if (wen) begin
-                    if (wmask[0]) buffer[buf_addr][7:0] <= wdata[7:0];
-                    if (wmask[1]) buffer[buf_addr][15:8] <= wdata[15:8];
-                    if (wmask[2]) buffer[buf_addr][23:16] <= wdata[23:16];
-                end
-                rdata <= {8'b0, buffer[buf_addr]};
-            end else begin
-                // Control register
-                if (wen) begin
-                    if (wmask[0]) control[7:0] <= wdata[7:0];
-                    if (wmask[1]) control[15:8] <= wdata[15:8];
-                    if (wmask[2]) control[23:16] <= wdata[23:16];
-                    if (wmask[3]) control[31:24] <= wdata[31:24];
-                end
-                rdata <= control;
-            end
-        end
-    end
+    // always @(posedge clk) begin
+    //     if (active) begin
+    //         if (local_word_addr < BUFFER_SIZE_W) begin
+    //             // Buffer A
+    //             if (wen) begin
+    //                 if (wmask[0]) buffer[buf_addr][7:0] <= wdata[7:0];
+    //                 if (wmask[1]) buffer[buf_addr][15:8] <= wdata[15:8];
+    //                 if (wmask[2]) buffer[buf_addr][23:16] <= wdata[23:16];
+    //             end
+    //             rdata <= {8'b0, buffer[buf_addr]};
+    //         end else begin
+    //             // Control register
+    //             if (wen) begin
+    //                 if (wmask[0]) control[7:0] <= wdata[7:0];
+    //                 if (wmask[1]) control[15:8] <= wdata[15:8];
+    //                 if (wmask[2]) control[23:16] <= wdata[23:16];
+    //                 if (wmask[3]) control[31:24] <= wdata[31:24];
+    //             end
+    //             rdata <= control;
+    //         end
+    //         ready <= ren | wen;
+    //     end
+    // end
 
     // HUB75 Control logic
     // TODO: Divider!
     wire hub75_clock = clk;
-    localparam H_STATE_RLO = 3'b001;
-    localparam H_STATE_RHI = 3'b010;
-    localparam H_STATE_SHIFT = 3'b100;
-    reg [2:0] h_state = H_STATE_RLO;
+    localparam H_STATE_READ = 2'b01;
+    localparam H_STATE_SHIFT = 2'b10;
+    reg [1:0] h_state = H_STATE_READ;
 
     reg [$clog2(ROWS_2)-1:0] row_2 = 0;  // Increase after row is clocked
     reg [$clog2(COLS)-1:0] col = 0;  // Increase as bits are clocked out
     reg [PWM_BITS-1:0] pwm_step = 0;  // Increase every screen draw
 
-    // Switch between addresses
-    wire [BUFFER_ADDRBITS-1:0] buffer_address = {
-        buffer_select, (h_state == H_STATE_RHI), row_2, col
-    };
-    wire [(PWM_BITS*3)-1:0] buf_read = buffer[buffer_address];
-
     // Pixel colors
     reg [(PWM_BITS*3)-1:0] pix_low = 0;
     reg [(PWM_BITS*3)-1:0] pix_high = 0;
+    wire [(PWM_BITS*3)-1:0] pix_low_r = buffer[{buffer_select, 1'b0, row_2, col}];
+    wire [(PWM_BITS*3)-1:0] pix_high_r = buffer[{buffer_select, 1'b1, row_2, col}];
+
     // RGB
     wire [PWM_BITS-1:0] low_R = pix_low[PWM_BITS-1:0];
     wire [PWM_BITS-1:0] low_G = pix_low[PWM_BITS*2-1:PWM_BITS];
@@ -104,12 +102,12 @@ module hub75_driver #(
     wire [PWM_BITS-1:0] high_G = pix_high[PWM_BITS*2-1:PWM_BITS];
     wire [PWM_BITS-1:0] high_B = pix_high[PWM_BITS*3-1:PWM_BITS*2];
     // PWMming
-    assign R0 = low_R > pwm_step;
-    assign G0 = low_G > pwm_step;
-    assign B0 = low_B > pwm_step;
-    assign R1 = high_R > pwm_step;
-    assign G1 = high_G > pwm_step;
-    assign B1 = high_B > pwm_step;
+    assign R0 = 128 > pwm_step;  //low_R > pwm_step;
+    assign G0 = 128 > pwm_step;  //low_G > pwm_step;
+    assign B0 = 128 > pwm_step;  //low_B > pwm_step;
+    assign R1 = 128 > pwm_step;  //high_R > pwm_step;
+    assign G1 = 128 > pwm_step;  //high_G > pwm_step;
+    assign B1 = 128 > pwm_step;  //high_B > pwm_step;
 
     assign CLK_HUB75 = h_state == H_STATE_SHIFT;
     // Display the LAST WRITTEN row!
@@ -124,21 +122,19 @@ module hub75_driver #(
 
     // TODO: Pixel clock, etc.
     // TODO: Eliminate this FSM to allow pixel output at 1-1/2 pixels/clk
+    // Store top/bottom on seperate memories...
     // Restructure buffer for adjacency, or do some other monkey business
     always @(posedge hub75_clock) begin
         unique case (h_state)
-            H_STATE_RLO: begin
-                pix_low <= buf_read;
-                h_state <= H_STATE_RHI;
-            end
-            H_STATE_RHI: begin
-                pix_high <= buf_read;
+            H_STATE_READ: begin
+                pix_low  <= pix_low_r;
+                pix_high <= pix_high_r;
                 h_state  <= H_STATE_SHIFT;
             end
             H_STATE_SHIFT: begin
-                h_state <= H_STATE_RLO;
+                h_state <= H_STATE_READ;
             end
-            default: h_state <= H_STATE_RLO;
+            default: h_state <= H_STATE_READ;
         endcase
 
         // Every Pixel
@@ -162,5 +158,5 @@ module hub75_driver #(
     end
 
     // Latch data at end of column (start of next)
-    assign LATCH = (h_state == H_STATE_RLO) && (col == 0);
+    assign LATCH = (h_state == H_STATE_READ) && (col == 0);
 endmodule
