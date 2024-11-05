@@ -120,7 +120,7 @@ module soc_ecp5 #(
     wire mem_active;
 
     always @(posedge core_clk) begin
-        mem_done <= (mem_ren | mem_wen) & mem_active;
+        mem_done <= (mem_ren | mem_wen);
     end
 
     assign mem_rdata = mem_active ? progMEM_rdata : '0;

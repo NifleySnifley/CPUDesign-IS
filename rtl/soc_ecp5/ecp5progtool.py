@@ -44,9 +44,16 @@ if __name__ == "__main__":
         print("Error packing bitstream.")
         exit_fail()
         
-    if (subprocess.call(["ecpprog", "-S", tmpdir / "loaded.bit"]) != 0):
-        print("Error programming.")
-        exit_fail()
+    if (args.flash):
+        # openFPGALoader --vid 0x0403 --pid 0x6010 --unprotect-flash -f build/$(PROJNAME).bit
+        if (subprocess.call(["openFPGALoader", '--vid', '0x0403', '--pid', '0x6010', '--unprotect-flash', '-r', '-f', tmpdir / "loaded.bit"]) != 0):
+            print("Error programming.")
+            exit_fail()
+    else:
+        if (subprocess.call(["ecpprog", "-S", tmpdir / "loaded.bit"]) != 0):
+            print("Error programming.")
+            exit_fail()
+       
         
     shutil.rmtree(tmpdir)
     

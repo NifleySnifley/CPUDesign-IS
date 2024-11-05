@@ -7,7 +7,7 @@ run: build/sim_cli build/sim_emulator
 	build/sim_cli -o memory.bin -r registers.csv ../programs/test_baremetal/test_main.bin
 
 build/sim_emulator: build src/sim_emulator.c build/rv32i_simulator.o build/font.bin
-	gcc -O5 -Isrc src/sim_emulator.c build/rv32i_simulator.o -lSDL2 -o build/sim_emulator
+	gcc -O5 -Isrc src/sim_emulator.c build/rv32i_simulator.o -lm -lSDL2 -o build/sim_emulator
 #	gcc -O5 build/sim_cli.o build/rv32i_simulator.o -o ./build/sim_cli
 
 build/font.bin: build 

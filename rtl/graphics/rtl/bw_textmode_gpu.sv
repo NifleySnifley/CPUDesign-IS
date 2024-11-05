@@ -1,5 +1,5 @@
 module bw_textmode_gpu #(
-    parameter SCREENBUFFER_BASE_ADDR = 32'h10000,
+    parameter SCREENBUFFER_BASE_ADDR = 32'h82000000,
     parameter FONTROM_INITFILE = ""  // spleen8x16.txt
     // parameter FONTRAM_BASE_ADDR = 32'h10000
 ) (

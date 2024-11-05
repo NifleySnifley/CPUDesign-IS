@@ -13,7 +13,7 @@
 #include <signal.h>
 #include <sys/time.h>
 
-#define LEDS_ADDR 0xf000
+#define LEDS_ADDR 0x80000000
 
 #define SCREEN_WIDTH    640
 #define SCREEN_HEIGHT   480
@@ -21,19 +21,30 @@
 #define FONT_WIDTH 8
 #define SCREEN_ROWS (SCREEN_HEIGHT/FONT_HEIGHT)
 #define SCREEN_COLS (SCREEN_WIDTH/FONT_WIDTH)
-#define SCREENBUFFER_BASE_ADDR 0x10000
+#define SCREENBUFFER_BASE_ADDR 0x82000000
 #define SCREENBUFFER_SIZE_B (SCREEN_ROWS*SCREEN_COLS)
 #define COLORBUFFER_BASE_ADDR (SCREENBUFFER_BASE_ADDR + SCREENBUFFER_SIZE_B)
 #define COLORBUFFER_SIZE_B (SCREEN_ROWS*SCREEN_COLS * 4)
-#define FONTRAM_BASE_ADDR 0x20000
+#define FONTRAM_BASE_ADDR 0x90000000 // FIXME: This doesn't really exist, get rid of it
 #define FONTRAM_SIZE_B (256*16)
 
 #define VGA_SCALE 1
+
+#define HUB75_SCALE 8
+#define HUB75_BASE_ADDR 0x81000000
+#define HUB75_ROWS 64
+#define HUB75_COLS 64
+#define HUB75_BUFWORDS (HUB75_ROWS * HUB75_COLS)
+#define HUB75_BUFFERS 2
+// 1 extra for control
+#define HUB75_CONTROL_ADDR (HUB75_BASE_ADDR + (HUB75_WORDS-1) * 4)
+#define HUB75_WORDS (HUB75_BUFWORDS * HUB75_BUFFERS + 1)
 
 static volatile bool EXIT = false;
 static bool enable_leds = false;
 static bool enable_vga = false;
 static bool emulate_bootloader = false;
+bool enable_hub75 = false;
 const char* fontfile = "build/font.bin";
 
 void set_pixel(SDL_Surface* surface, int x, int y, Uint32 pixel) {
@@ -49,6 +60,10 @@ typedef union argb32 {
 	};
 	uint32_t value;
 } rgba32;
+
+uint8_t hub75_colorcorrect(uint8_t colorin) {
+	return (uint8_t)(255.f * sqrtf((float)colorin / 255.f));
+}
 
 void* sdl_window_thread_fn(void* arg) {
 	rv_simulator_t* sim = (rv_simulator_t*)arg;
@@ -69,7 +84,7 @@ void* sdl_window_thread_fn(void* arg) {
 	}
 
 
-	SDL_Window* led_window, * vga_window;
+	SDL_Window* led_window, * vga_window, * hub75_window;
 
 	if (enable_leds)
 		led_window = SDL_CreateWindow("LED Bar",
@@ -85,13 +100,23 @@ void* sdl_window_thread_fn(void* arg) {
 			SCREEN_WIDTH * VGA_SCALE, SCREEN_HEIGHT * VGA_SCALE,
 			SDL_WINDOW_SHOWN);
 
-	if (!vga_window || !led_window) {
+	if (enable_hub75)
+		hub75_window = SDL_CreateWindow("HUB75 Matrix",
+			SDL_WINDOWPOS_UNDEFINED,
+			SDL_WINDOWPOS_UNDEFINED,
+			HUB75_COLS * HUB75_SCALE, HUB75_ROWS * HUB75_SCALE,
+			SDL_WINDOW_SHOWN);
+
+	if ((!vga_window && enable_vga) || (!led_window && enable_leds) || (!hub75_window && enable_hub75)) {
 		printf("Windows could not be created!\n"
 			"SDL_Error: %s\n", SDL_GetError());
 	}
 
 	SDL_Renderer* led_renderer;
 	if (enable_leds) led_renderer = SDL_CreateRenderer(led_window, -1, SDL_RENDERER_ACCELERATED);
+
+	SDL_Renderer* hub75_renderer;
+	if (enable_hub75) hub75_renderer = SDL_CreateRenderer(hub75_window, -1, SDL_RENDERER_ACCELERATED);
 
 	printf("Opened GUI\n");
 
@@ -118,7 +143,7 @@ void* sdl_window_thread_fn(void* arg) {
 			SDL_SetRenderDrawColor(led_renderer, 0x00, 0x00, 0x00, 0xFF);
 			SDL_RenderClear(led_renderer);
 
-			uint8_t led_row = rv_simulator_read_byte(sim, 0xf000);
+			uint8_t led_row = rv_simulator_read_byte(sim, LEDS_ADDR);
 			// uint8_t led_row_select = rv_simulator_read_byte(sim, 0xf001);
 			for (int i = 0; i < 8; ++i) {
 				led_rect.x = LED_SIZE * i + 1;
@@ -133,6 +158,37 @@ void* sdl_window_thread_fn(void* arg) {
 
 
 			SDL_RenderPresent(led_renderer);
+		}
+
+		if (enable_hub75) {
+			SDL_SetRenderDrawColor(hub75_renderer, 0x00, 0x00, 0x00, 0xFF);
+			SDL_RenderClear(hub75_renderer);
+
+			uint8_t buffer_select = rv_simulator_read_byte(sim, HUB75_CONTROL_ADDR);
+
+			for (int row = 0; row < HUB75_ROWS; ++row) {
+				for (int col = 0; col < HUB75_COLS; ++col) {
+					// Rotated 90deg CW to match reality
+					int x = HUB75_ROWS - 1 - row;
+					int y = col;
+
+					int pixel_index = x * HUB75_ROWS + y + buffer_select * HUB75_ROWS * HUB75_COLS;
+					uint8_t red = rv_simulator_read_byte(sim, HUB75_BASE_ADDR + 4 * pixel_index + 0);
+					uint8_t green = rv_simulator_read_byte(sim, HUB75_BASE_ADDR + 4 * pixel_index + 1);
+					uint8_t blue = rv_simulator_read_byte(sim, HUB75_BASE_ADDR + 4 * pixel_index + 2);
+					// uint8_t led_row_select = rv_simulator_read_byte(sim, 0xf001);
+					for (int i = 0; i < 8; ++i) {
+						led_rect.x = HUB75_SCALE * row;
+						led_rect.y = HUB75_SCALE * col;
+
+						SDL_SetRenderDrawColor(hub75_renderer, hub75_colorcorrect(red * 2), hub75_colorcorrect(green * 2), hub75_colorcorrect(blue * 2), 0xFF);
+
+						SDL_RenderFillRect(hub75_renderer, &led_rect);
+					}
+				}
+			}
+
+			SDL_RenderPresent(hub75_renderer);
 		}
 
 		//////////////////// VGA //////////////////
@@ -188,10 +244,12 @@ void* sdl_window_thread_fn(void* arg) {
 
 	EXIT = true;
 	if (enable_leds) SDL_DestroyRenderer(led_renderer);
+	if (enable_hub75) SDL_DestroyRenderer(hub75_renderer);
 
 
 	if (enable_leds) SDL_DestroyWindow(led_window);
 	if (enable_vga) SDL_DestroyWindow(vga_window);
+	if (enable_hub75) SDL_DestroyWindow(hub75_window);
 
 	SDL_Quit();
 }
@@ -209,13 +267,16 @@ int main(int argc, char** argv) {
 	signal(SIGINT, signal_handler);
 
 	int opt;
-	while ((opt = getopt(argc, argv, "lvbf:B")) != -1) {
+	while ((opt = getopt(argc, argv, "lvbf:Bh")) != -1) {
 		switch (opt) {
 			case 'l':
 				enable_leds = true;
 				break;
 			case 'v':
 				enable_vga = true;
+				break;
+			case 'h':
+				enable_hub75 = true;
 				break;
 			case 'b':
 				emulate_bootloader = true;
@@ -237,19 +298,17 @@ int main(int argc, char** argv) {
 	rv_simulator_t sim = { 0 };
 	rv_simulator_init(&sim);
 	rv_simulator_segmented_memory_t* memory = rv_simulator_init_segmented_memory(&sim);
-	rv_simulator_segmented_memory_add_segment(memory, 0, 2560 * 4, "Main Memory", false);
-	rv_simulator_segmented_memory_add_segment(memory, 0xf000, 4, "Parallel IO", false);
+	rv_simulator_segmented_memory_add_segment(memory, 0, 128000 * 4, "Main Memory", false);
+	rv_simulator_segmented_memory_add_segment(memory, LEDS_ADDR, 4, "Parallel IO", false);
 	rv_simulator_segmented_memory_add_segment(memory, 0xf0000000, 131072, "SPRAM", false);
-	rv_simulator_segmented_memory_add_segment(memory, SCREENBUFFER_BASE_ADDR, SCREENBUFFER_SIZE_B, "Character Screenbuffer", false);
-	rv_simulator_segmented_memory_add_segment(memory, COLORBUFFER_BASE_ADDR, COLORBUFFER_SIZE_B, "Character Colorbuffer", false);
-	rv_simulator_segmented_memory_add_segment(memory, FONTRAM_BASE_ADDR, FONTRAM_SIZE_B, "Font RAM", false);
-
-	for (int i = 0; i < SCREEN_ROWS * SCREEN_COLS;++i) {
-		int addr = COLORBUFFER_BASE_ADDR + i * 4;
-		uint16_t color = 0b000000111111; // White FG, black BG
-		rv_simulator_write_byte(&sim, addr + 0, color & 0x3F);
-		rv_simulator_write_byte(&sim, addr + 1, (color >> 6) & 0x3F);
+	if (enable_vga) {
+		// TODO: Fix addressing of this
+		rv_simulator_segmented_memory_add_segment(memory, SCREENBUFFER_BASE_ADDR, SCREENBUFFER_SIZE_B, "Character Screenbuffer", false);
+		rv_simulator_segmented_memory_add_segment(memory, COLORBUFFER_BASE_ADDR, COLORBUFFER_SIZE_B, "Character Colorbuffer", false);
+		rv_simulator_segmented_memory_add_segment(memory, FONTRAM_BASE_ADDR, FONTRAM_SIZE_B, "Font RAM", false);
 	}
+	if (enable_hub75)
+		rv_simulator_segmented_memory_add_segment(memory, HUB75_BASE_ADDR, HUB75_WORDS * 4, "HUB75 Buffers & Control", false);
 
 	if (emulate_bootloader) {
 		int nmem = rv_simulator_load_memory_from_file(&sim, program_filename, FILETYPE_AUTO, 0xf0000000);
@@ -260,12 +319,21 @@ int main(int argc, char** argv) {
 		printf("Loaded %d bytes into main memory\n", nmem);
 	}
 
-	int nmem = rv_simulator_load_memory_from_file(&sim, fontfile, FILETYPE_AUTO, FONTRAM_BASE_ADDR);
-	printf("Loaded %d bytes into font RAM\n", nmem);
+	if (enable_vga) {
+		for (int i = 0; i < SCREEN_ROWS * SCREEN_COLS;++i) {
+			int addr = COLORBUFFER_BASE_ADDR + i * 4;
+			uint16_t color = 0b000000111111; // White FG, black BG
+			rv_simulator_write_byte(&sim, addr + 0, color & 0x3F);
+			rv_simulator_write_byte(&sim, addr + 1, (color >> 6) & 0x3F);
+		}
+
+		int nmem = rv_simulator_load_memory_from_file(&sim, fontfile, FILETYPE_AUTO, FONTRAM_BASE_ADDR);
+		printf("Loaded %d bytes into font RAM\n", nmem);
+	}
 
 	pthread_t sdl_thread_handle;
 
-	if (enable_leds | enable_vga)
+	if (enable_leds | enable_vga | enable_hub75)
 		pthread_create(&sdl_thread_handle, NULL, sdl_window_thread_fn, (void*)&sim);
 
 	uint64_t instruction = 0;
@@ -330,7 +398,7 @@ int main(int argc, char** argv) {
 	}
 
 	EXIT = true;
-	if (enable_leds | enable_vga)
+	if (enable_leds | enable_vga | enable_hub75)
 		pthread_join(sdl_thread_handle, NULL);
 
 	rv_simulator_deinit(&sim);

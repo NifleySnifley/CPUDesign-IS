@@ -53,7 +53,7 @@ module hub75_driver #(
     localparam BUFFER_ADDRBITS = $clog2(BUFFER_SIZE_W);
 
     wire [29:0] word_addr = addr[31:2];
-    assign active = (addr >= BASEADDR) && (addr <= (BASEADDR + N_WORDS * 4));
+    assign active = (addr >= BASEADDR) && (addr < (BASEADDR + N_WORDS * 4));
     wire [29:0] local_word_addr = word_addr - BASEADDR[31:2];
 
     wire [BUFFER_ADDRBITS-1:0] buf_addr = local_word_addr[BUFFER_ADDRBITS-1:0];
@@ -190,7 +190,7 @@ module hub75_driver #(
 
                     // PWM increase from 0->254, not 255 so color value of 255 is 100% duty
                     // TODO: make PWM less flickerey!!!
-                    pwm_step <= (pwm_step == (128 - 1)) ? 0 : (pwm_step + 1);
+                    pwm_step <= (pwm_step == (128 - 2)) ? 0 : (pwm_step + 1);
                 end else row_2 <= row_2 + 1;
 
                 // End of column, reset and latch data
