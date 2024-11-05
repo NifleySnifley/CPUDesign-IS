@@ -8,6 +8,7 @@ module hub75_driver #(
     localparam ADDRBITS = $clog2(ROWS_2)
 ) (
     input wire clk,
+    input wire output_clk,
 
     // Bus device
     input wire [31:0] addr,
@@ -92,7 +93,7 @@ module hub75_driver #(
 
     // HUB75 Control logic
     // TODO: Divider!
-    wire hub75_clock = clk;
+    wire hub75_clock = output_clk;
     // reg [7:0] div = 0;
     // always @(posedge clk) begin
     //     div <= div + 1;
@@ -141,7 +142,7 @@ module hub75_driver #(
     wire [PWM_BITS-1:0] high_R = pix_high[PWM_BITS-1:0];
     wire [PWM_BITS-1:0] high_G = pix_high[PWM_BITS*2-1:PWM_BITS];
     wire [PWM_BITS-1:0] high_B = pix_high[PWM_BITS*3-1:PWM_BITS*2];
-    // PWMming
+    // PWMming (7-bit)
     assign R0 = low_R > pwm_step;
     assign G0 = low_G > pwm_step;
     assign B0 = low_B > pwm_step;
@@ -189,7 +190,7 @@ module hub75_driver #(
 
                     // PWM increase from 0->254, not 255 so color value of 255 is 100% duty
                     // TODO: make PWM less flickerey!!!
-                    pwm_step <= (pwm_step == (64 - 1)) ? 0 : (pwm_step + 1);
+                    pwm_step <= (pwm_step == (128 - 1)) ? 0 : (pwm_step + 1);
                 end else row_2 <= row_2 + 1;
 
                 // End of column, reset and latch data

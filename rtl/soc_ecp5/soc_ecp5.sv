@@ -14,6 +14,7 @@
 `include "pll_40MHz.sv"
 `include "pll_5MHz.sv"
 `include "pll_10MHz.sv"
+`include "pll_75MHz.sv"
 
 module soc_ecp5 #(
     parameter MEMSIZE = 12800  // 27648 is the absolute max
@@ -190,8 +191,15 @@ module soc_ecp5 #(
     wire disp_ready;
     wire disp_active;
 
+    wire output_clk;
+    pll_75MHz video_pll (
+        .clkin  (osc_clk25),  // 25 MHz, 0 deg
+        .clkout0(output_clk)  // 100 MHz, 0 deg
+    );
+
     hub75_driver display (
         .clk(core_clk),
+        .output_clk,
 
         // Bus device
         .addr(disp_addr),

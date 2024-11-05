@@ -5,7 +5,7 @@
 #include <memory.h>
 #include <math.h>
 
-#define MANDEL_ITER 64
+#define MANDEL_ITER 128
 #define MANDEL_XMIN -2.00f
 #define MANDEL_XMAX 0.47f
 #define MANDEL_YMIN -1.12
