@@ -5,7 +5,7 @@ COMMONDIR=../common
 PACKAGE=CABGA256
 LFP=$(PROJNAME).lpf
 
-MEMSIZE=8192
+MEMSIZE=12800
 
 all: build/$(PROJNAME).svf build/$(PROJNAME).bit
 

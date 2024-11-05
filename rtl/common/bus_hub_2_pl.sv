@@ -37,7 +37,7 @@ module bus_hub_2_pl (
 
     reg [$clog2(2+1)-1:0] dev_n_selected = 0;
 
-    assign host_ready = (dev_n_selected == 0) ? 1'b1 : |(device_active & device_ready);
+    assign host_ready = (dev_n_selected == 0) ? 1'b1 : |(device_ready);
 
     // Device->Host
     always @(posedge clk) begin

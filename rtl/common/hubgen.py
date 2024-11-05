@@ -47,7 +47,7 @@ if args.pipelined:
     
     reg [$clog2(N_DEVICES+1)-1:0] dev_n_selected = 0;
     
-    assign host_ready = (dev_n_selected == 0) ? 1'b1 : |(device_active & device_ready);
+    assign host_ready = (dev_n_selected == 0) ? 1'b1 : |(device_ready);
 
     // Device->Host
     always @(posedge clk) begin

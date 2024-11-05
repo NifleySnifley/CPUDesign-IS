@@ -48,5 +48,5 @@ async def test_hub75(dut):
         for y in range(10):
             await set_pixel(dut, 0, x, y, 255,255,255)
 
-    for cyc in range(10000):
+    for cyc in range(100000):
         await clk(dut)

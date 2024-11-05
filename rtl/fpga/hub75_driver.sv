@@ -1,3 +1,5 @@
+// `include "pll_100MHz.sv"
+
 module hub75_driver #(
     parameter ROWS = 64,  // Addressable
     parameter COLS = 64,  // Shiftable
@@ -29,6 +31,9 @@ module hub75_driver #(
     output wire LATCH,  // Latches on rising edge
     output wire OE  // Active low
 );
+    initial rdata = 0;
+    initial ready = 0;
+
     localparam PWM_BITS = 8;
     localparam BUFFER_SIZE_W = ROWS * COLS * 2;
     // Two buffers (A and B)
@@ -47,7 +52,7 @@ module hub75_driver #(
     localparam BUFFER_ADDRBITS = $clog2(BUFFER_SIZE_W);
 
     wire [29:0] word_addr = addr[31:2];
-    assign active = (addr >= BASEADDR) && (addr < (BASEADDR + N_WORDS * 4));
+    assign active = (addr >= BASEADDR) && (addr <= (BASEADDR + N_WORDS * 4));
     wire [29:0] local_word_addr = word_addr - BASEADDR[31:2];
 
     wire [BUFFER_ADDRBITS-1:0] buf_addr = local_word_addr[BUFFER_ADDRBITS-1:0];
@@ -61,8 +66,11 @@ module hub75_driver #(
                     if (wmask[0]) buffer[buf_addr][7:0] <= wdata[7:0];
                     if (wmask[1]) buffer[buf_addr][15:8] <= wdata[15:8];
                     if (wmask[2]) buffer[buf_addr][23:16] <= wdata[23:16];
+                end else begin
+                    // TODO: Fix reading
+                    // rdata <= {8'b0, buffer[buf_addr]};
                 end
-                rdata <= {8'b0, buffer[buf_addr]};
+
             end else begin
                 // Control register
                 if (wen) begin
@@ -77,9 +85,20 @@ module hub75_driver #(
         end
     end
 
+    // pll_100MHz pll (
+    //     .clkin(clk),  // 50 MHz, 0 deg
+    //     .clkout0(hub75_clock)  // 100 MHz, 0 deg
+    // );
+
     // HUB75 Control logic
     // TODO: Divider!
     wire hub75_clock = clk;
+    // reg [7:0] div = 0;
+    // always @(posedge clk) begin
+    //     div <= div + 1;
+    // end
+    // wire hub75_clock = div[7];
+
     localparam H_STATE_RL = 3'b001;
     localparam H_STATE_RH = 3'b010;
     localparam H_STATE_SHIFT = 3'b100;
@@ -94,13 +113,14 @@ module hub75_driver #(
     reg [(PWM_BITS*3)-1:0] pix_high = 0;
     reg [(PWM_BITS*3)-1:0] pix_low_next;
     reg [(PWM_BITS*3)-1:0] pix_high_next;
+    // TODO: Fix the 1-cycle delay here that's causing a bad pixel artifact - properly read twice from the buffer!
     always_comb begin
         pix_low_next  = pix_low;
         pix_high_next = pix_high;
-        if (h_state == H_STATE_RL) begin
+        if (h_state == H_STATE_RH) begin
             pix_low_next = buffer_read;
         end
-        if (h_state == H_STATE_RH) begin
+        if (h_state == H_STATE_SHIFT) begin
             pix_high_next = buffer_read;
         end
     end
@@ -114,6 +134,10 @@ module hub75_driver #(
         buffer_read <= buffer[buffer_read_addr];
         pix_low <= pix_low_next;
         pix_high <= pix_high_next;
+
+        // TODO: Get these both working!
+        // pix_low  <= buffer[{buffer_select, 1'b0, row_2, col}];
+        // pix_high <= '0;  //buffer[{buffer_select, 1'b1, row_2, col}];
     end
 
     // RGB
@@ -131,13 +155,13 @@ module hub75_driver #(
     assign G1 = high_G > pwm_step;
     assign B1 = high_B > pwm_step;
 
-    assign CLK_HUB75 = h_state == H_STATE_SHIFT;
+
+    assign CLK_HUB75 = (h_state == H_STATE_SHIFT);
     // Display the LAST WRITTEN row!
     // While rowsel is selected, pixels for the next row are clocked in
     // then they are latched and displayed while the next row is clocked in
     assign ROWSEL = row_2 - 1;
     // TODO: Global brightness control by PWMming OE?
-    assign OE = 1'b0;  // Always display
 
     localparam LAST_COL = COLS - 1;
     localparam LAST_ROW = ROWS_2 - 1;
@@ -163,7 +187,6 @@ module hub75_driver #(
         endcase
 
         // Every Pixel
-        // TODO: Frame latching, etc.
         if (h_state == H_STATE_SHIFT) begin
             if (col == LAST_COL[5:0]) begin
                 // End of screen
@@ -171,7 +194,8 @@ module hub75_driver #(
                     row_2 <= 0;
 
                     // PWM increase from 0->254, not 255 so color value of 255 is 100% duty
-                    // pwm_step <= (pwm_step == 254) ? 0 : (pwm_step + 1);
+                    // TODO: make PWM less flickerey!!!
+                    pwm_step <= (pwm_step == 254) ? 0 : (pwm_step + 1);
                 end else row_2 <= row_2 + 1;
 
                 // End of column, reset and latch data
@@ -184,4 +208,5 @@ module hub75_driver #(
 
     // Latch data at end of column (start of next)
     assign LATCH = (h_state == H_STATE_RH) && (col == 0);
+    assign OE = col == 0;  // Always display
 endmodule

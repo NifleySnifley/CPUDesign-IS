@@ -34,26 +34,26 @@ module bus_hub_3_pl (
             assign device_ren[i] = selected ? host_ren : 0;
         end
     endgenerate
-    
+
     reg [$clog2(3+1)-1:0] dev_n_selected = 0;
-    
-    assign host_ready = (dev_n_selected == 0) ? 1'b1 : |(device_active & device_ready);
+
+    assign host_ready = (dev_n_selected == 0) ? 1'b1 : |(device_ready);
 
     // Device->Host
     always @(posedge clk) begin
-        casez(device_active)                                
-		3'b001: dev_n_selected <= 1;
-		3'b01?: dev_n_selected <= 2;
-		3'b1??: dev_n_selected <= 3;
+        casez (device_active)
+            3'b001:  dev_n_selected <= 1;
+            3'b01?:  dev_n_selected <= 2;
+            3'b1??:  dev_n_selected <= 3;
             default: dev_n_selected <= 0;
         endcase
     end
 
     always_comb begin
         case (dev_n_selected)
-		1: host_data_read = device_data_read[31:0];
-		2: host_data_read = device_data_read[63:32];
-		3: host_data_read = device_data_read[95:64];
+            1: host_data_read = device_data_read[31:0];
+            2: host_data_read = device_data_read[63:32];
+            3: host_data_read = device_data_read[95:64];
             default: host_data_read = 0;
         endcase
     end
