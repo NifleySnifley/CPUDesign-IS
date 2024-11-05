@@ -2,7 +2,7 @@ OBJCOPY=../../simulator/asm2bin.py
 LIBDIR=../../library
 SIMULATOR=../../simulator/build/sim_emulator
 LIB_SOURCES=$(LIBDIR)/crt0.S $(LIBDIR)/soc_core.c $(LIBDIR)/soc_io.c
-COMPILE=riscv32-unknown-elf-gcc -I$(LIBDIR) -g -march=rv32im -mabi=ilp32  -Wall -nostartfiles  -ffunction-sections -fdata-sections -mstrict-align -Wl,--gc-sections -ffp-contract=off -lm -lc -lgcc $(LIB_SOURCES)
+COMPILE=riscv32-unknown-elf-gcc -I$(LIBDIR) -g -march=rv32im -mabi=ilp32  -Wall -nostartfiles  -ffunction-sections -fdata-sections -mstrict-align -Wl,--gc-sections -ffp-contract=off -lc -lgcc $(LIB_SOURCES)
 
 #
 .PHONY: all
@@ -29,7 +29,7 @@ build/upduino_main.hex: upduino_main.c build
 	
 .PHONY: build/ecp5_test.hex
 build/ecp5_test.hex: ecp5_test.c build
-	$(COMPILE) -Os -DF_CPU=50000000 -DCPU_PIPELINED -T$(LIBDIR)/map_ecp5.ld ecp5_test.c -o build/ecp5_test.elf
+	$(COMPILE) -O5 -DF_CPU=50000000 -DCPU_PIPELINED -T$(LIBDIR)/map_ecp5.ld ecp5_test.c -o build/ecp5_test.elf
 	$(OBJCOPY) build/ecp5_test.elf --hex -o build/ecp5_test.hex
 
 .PHONY: build/cgol.hex

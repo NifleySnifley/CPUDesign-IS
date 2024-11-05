@@ -109,21 +109,12 @@ module hub75_driver #(
     reg [PWM_BITS-1:0] pwm_step = 0;  // Increase every screen draw
 
     // Pixel colors
-    reg [(PWM_BITS*3)-1:0] pix_low = 0;
-    reg [(PWM_BITS*3)-1:0] pix_high = 0;
-    reg [(PWM_BITS*3)-1:0] pix_low_next;
-    reg [(PWM_BITS*3)-1:0] pix_high_next;
-    // TODO: Fix the 1-cycle delay here that's causing a bad pixel artifact - properly read twice from the buffer!
-    always_comb begin
-        pix_low_next  = pix_low;
-        pix_high_next = pix_high;
-        if (h_state == H_STATE_RH) begin
-            pix_low_next = buffer_read;
-        end
-        if (h_state == H_STATE_SHIFT) begin
-            pix_high_next = buffer_read;
-        end
-    end
+    reg [(PWM_BITS*3)-1:0] pix_low;
+    reg [(PWM_BITS*3)-1:0] pix_high;
+    reg [(PWM_BITS*3)-1:0] pix_low_reg;
+    reg [(PWM_BITS*3)-1:0] pix_high_reg;
+    reg had_pl = 0;
+    reg had_ph = 0;
 
     reg [(PWM_BITS*3)-1:0] buffer_read;
     wire [BUFFER_ADDRBITS-1:0] buffer_read_addr = {
@@ -132,12 +123,15 @@ module hub75_driver #(
 
     always @(posedge hub75_clock) begin
         buffer_read <= buffer[buffer_read_addr];
-        pix_low <= pix_low_next;
-        pix_high <= pix_high_next;
+        had_pl <= h_state == H_STATE_RL;
+        had_ph <= h_state == H_STATE_RH;
+        if (had_pl) pix_low_reg <= buffer_read;
+        if (had_ph) pix_high_reg <= buffer_read;
+    end
 
-        // TODO: Get these both working!
-        // pix_low  <= buffer[{buffer_select, 1'b0, row_2, col}];
-        // pix_high <= '0;  //buffer[{buffer_select, 1'b1, row_2, col}];
+    always_comb begin
+        pix_low  = had_pl ? buffer_read : pix_low_reg;
+        pix_high = had_ph ? buffer_read : pix_high_reg;
     end
 
     // RGB
@@ -195,7 +189,7 @@ module hub75_driver #(
 
                     // PWM increase from 0->254, not 255 so color value of 255 is 100% duty
                     // TODO: make PWM less flickerey!!!
-                    pwm_step <= (pwm_step == 254) ? 0 : (pwm_step + 1);
+                    pwm_step <= (pwm_step == (64 - 1)) ? 0 : (pwm_step + 1);
                 end else row_2 <= row_2 + 1;
 
                 // End of column, reset and latch data
