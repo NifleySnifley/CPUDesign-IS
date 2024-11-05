@@ -17,6 +17,7 @@ async def bus_read(dut, addr):
     dut.addr.value = addr
     dut.wdata.value = 0
     dut.wmask.value = 0
+    assert dut.active
     await clk(dut)
     while (not dut.ready):
         await clk(dut)
@@ -28,6 +29,7 @@ async def bus_write(dut, addr, data, mask):
     dut.addr.value = addr
     dut.wdata.value = data
     dut.wmask.value = mask
+    assert dut.active
     await clk(dut)
     while (not dut.ready):
         await clk(dut)
