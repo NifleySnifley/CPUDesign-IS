@@ -120,3 +120,23 @@ bool gpio_get_level(uint32_t gpio_n) {
 		return false;
 	}
 }
+
+void hub75_select_buffer(int n) {
+	if (n < HUB75_N_BUFFERS && n >= 0)
+		HUB75_CTL = n;
+}
+void hub75_set_pixel(int x, int y, int buffer, hub75_color_t color) {
+	buffer = (buffer >= HUB75_N_BUFFERS) ? HUB75_N_BUFFERS - 1 : buffer;
+	int i = x * 64 + y + (64 * 64 * buffer);
+	HUB75_COLOR_W[i] = color.color;
+}
+uint8_t hub75_gamma_correct(int color_7bit) {
+	return (uint8_t)((color_7bit * color_7bit) / 127);
+}
+hub75_color_t hub75_gamma_correct_color(hub75_color_t c) {
+	return (hub75_color_t) {
+		.r = hub75_gamma_correct(c.r),
+			.g = hub75_gamma_correct(c.g),
+			.b = hub75_gamma_correct(c.b),
+	};
+}

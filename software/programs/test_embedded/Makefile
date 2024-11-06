@@ -6,7 +6,7 @@ COMPILE=riscv32-unknown-elf-gcc -I$(LIBDIR) -g -march=rv32im -mabi=ilp32  -Wall 
 
 #
 .PHONY: all
-all: build/icefun_main.hex build/upduino_main.hex build/graphics_test.hex build/dhrystones.hex build/pipelined_dhrystones.hex build/cgol.hex build/flash_test.hex build/ecp5_test.hex
+all: build/icefun_main.hex build/upduino_main.hex build/graphics_test.hex build/dhrystones.hex build/pipelined_dhrystones.hex build/cgol.hex build/flash_test.hex build/ecp5_test.hex build/ecp5_cgol.hex
 
 .PHONY: sim
 sim: build/icefun_main.hex
@@ -31,6 +31,11 @@ build/upduino_main.hex: upduino_main.c build
 build/ecp5_test.hex: ecp5_test.c build
 	$(COMPILE) -O5 -DF_CPU=50000000 -DCPU_PIPELINED -T$(LIBDIR)/map_ecp5.ld ecp5_test.c -o build/ecp5_test.elf
 	$(OBJCOPY) build/ecp5_test.elf --hex -o build/ecp5_test.hex
+
+.PHONY: build/ecp5_cgol.hex
+build/ecp5_cgol.hex: ecp5_cgol.c build
+	$(COMPILE) -O5 -DF_CPU=50000000 -DCPU_PIPELINED -T$(LIBDIR)/map_ecp5.ld ecp5_cgol.c -o build/ecp5_cgol.elf
+	$(OBJCOPY) build/ecp5_cgol.elf --hex -o build/ecp5_cgol.hex
 
 .PHONY: build/cgol.hex
 build/cgol.hex: cgol.c build

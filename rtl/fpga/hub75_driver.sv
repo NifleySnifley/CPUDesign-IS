@@ -190,7 +190,7 @@ module hub75_driver #(
 
                     // PWM increase from 0->254, not 255 so color value of 255 is 100% duty
                     // TODO: make PWM less flickerey!!!
-                    pwm_step <= (pwm_step == (128 - 2)) ? 0 : (pwm_step + 1);
+                    pwm_step <= (pwm_step == (128 - 1)) ? 0 : (pwm_step + 1);
                 end else row_2 <= row_2 + 1;
 
                 // End of column, reset and latch data
