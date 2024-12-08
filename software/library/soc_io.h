@@ -53,6 +53,7 @@
 #define HUB75_COLOR_B ((volatile uint8_t*)0x81000000)
 #define HUB75_COLOR_W ((volatile uint32_t*)0x81000000)
 #define HUB75_CTL *((volatile uint32_t*)(0x81000000 + HUB75_MATRIX_WIDTH * HUB75_MATRIX_HEIGHT * 4 * HUB75_N_BUFFERS))
+#define HUB75_VSYNC *((volatile uint8_t*)(0x81000000 + HUB75_MATRIX_WIDTH * HUB75_MATRIX_HEIGHT * 4 * HUB75_N_BUFFERS+1))
 
 extern int stdout_row;
 extern int stdout_col;
@@ -83,6 +84,8 @@ typedef union hub75_color_t {
 
 void hub75_select_buffer(int n);
 void hub75_set_pixel(int x, int y, int buffer, hub75_color_t color);
+bool hub75_get_vsync_flag();
+void hub75_clear_vsync_flag();
 uint8_t hub75_gamma_correct(int color_7bit);
 hub75_color_t hub75_gamma_correct_color(hub75_color_t c);
 

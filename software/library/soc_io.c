@@ -140,3 +140,11 @@ hub75_color_t hub75_gamma_correct_color(hub75_color_t c) {
 			.b = hub75_gamma_correct(c.b),
 	};
 }
+
+bool hub75_get_vsync_flag() {
+	return HUB75_VSYNC;
+}
+
+void hub75_clear_vsync_flag() {
+	HUB75_VSYNC = 1;
+}

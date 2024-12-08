@@ -82,8 +82,10 @@ int main() {
 		// Swap buffers
 		visible_buf = 1 - visible_buf;
 		hub75_select_buffer(visible_buf);
-		// delay_ms(50);
 
+		// Do the Vsync
+		while (!hub75_get_vsync_flag()) {}
+		hub75_clear_vsync_flag();
 
 		PARALLEL_IO_B[0] = 0x55;
 		// asm("ebreak");

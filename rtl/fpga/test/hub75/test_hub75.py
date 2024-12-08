@@ -7,8 +7,10 @@ from ctypes import c_uint32, c_int32
 
 async def clk(dut):
     dut.clk.value = 0
+    dut.output_clk.value = 0
     await Timer(1, units="ns")
     dut.clk.value = 1
+    dut.output_clk.value = 1
     await Timer(1, units="ns")
 
 async def bus_read(dut, addr):
@@ -21,7 +23,10 @@ async def bus_read(dut, addr):
     await clk(dut)
     while (not dut.ready):
         await clk(dut)
+    dut.wen.value = 0
+    dut.ren.value = 0
     return dut.rdata.value
+    
 
 async def bus_write(dut, addr, data, mask):
     dut.ren.value = 0
@@ -33,6 +38,8 @@ async def bus_write(dut, addr, data, mask):
     await clk(dut)
     while (not dut.ready):
         await clk(dut)
+    dut.wen.value = 0
+    dut.ren.value = 0
     # return dut.rdata
 
 BASEADDR=0x81000000
@@ -48,5 +55,8 @@ async def test_hub75(dut):
         for y in range(10):
             await set_pixel(dut, 0, x, y, 255,255,255)
 
-    for cyc in range(100000):
+    for cyc in range(1000000):
+        if (dut.vsync_flag.value):
+            print("Clearing Vsync")
+            await bus_write(dut, BASEADDR+64*64*4*2, 0b1<<8, 0b0010)
         await clk(dut)

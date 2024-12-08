@@ -45,6 +45,8 @@ module hub75_driver #(
     // FIXME: Register buffer swap ONLY at the end of a screen draw (last row, last col, and pwm @ 254)
     // Will prevent tearing/artifacts
     wire buffer_select = control[0];
+    reg vsync_clear_clk = 0;
+    reg vsync_flag = 0;
     // reg buffer_select_registered = 0;
 
     // 2 buffers and control register
@@ -60,6 +62,7 @@ module hub75_driver #(
 
     // Bus interface
     always @(posedge clk) begin
+        vsync_clear_clk = 0;
         if (active) begin
             if (local_word_addr < BUFFER_SIZE_W) begin
                 // Buffer A
@@ -76,15 +79,25 @@ module hub75_driver #(
                 // Control register
                 if (wen) begin
                     if (wmask[0]) control[7:0] <= wdata[7:0];
-                    if (wmask[1]) control[15:8] <= wdata[15:8];
-                    if (wmask[2]) control[23:16] <= wdata[23:16];
-                    if (wmask[3]) control[31:24] <= wdata[31:24];
+                    if (wmask[1]) vsync_clear_clk = wdata[8];
+                    // if (wmask[1]) control[15:8] <= wdata[15:8];
+                    // if (wmask[2]) control[23:16] <= wdata[23:16];
+                    // if (wmask[3]) control[31:24] <= wdata[31:24];
                 end
-                rdata <= control;
+                rdata <= {23'b0, vsync_flag, control[7:0]};
             end
             ready <= ren | wen;
         end
     end
+
+
+    // Vsync crossing
+    reg [1:0] vsync_sync = 0;
+    always @(posedge hub75_clock) begin
+        vsync_sync[0] <= vsync_clear_clk;
+        vsync_sync[1] <= vsync_sync[0];
+    end
+    wire vsync_clear_outclk = vsync_sync[1];
 
     // pll_100MHz pll (
     //     .clkin(clk),  // 50 MHz, 0 deg
@@ -180,6 +193,13 @@ module hub75_driver #(
             end
             default: h_state <= H_STATE_RL;
         endcase
+
+        if (vsync_clear_outclk) begin
+            vsync_flag <= 1'b0;
+        end
+        if (h_state == H_STATE_SHIFT && col==LAST_COL[5:0] && row_2==(LAST_ROW[4:0]) && (pwm_step == (128 - 1))) begin
+            vsync_flag <= 1'b1;
+        end
 
         // Every Pixel
         if (h_state == H_STATE_SHIFT) begin
