@@ -202,6 +202,6 @@ module hub75_driver #(
     end
 
     // Latch data at end of column (start of next)
-    assign LATCH = (h_state == H_STATE_RH) && (col == 0);
+    assign LATCH = (h_state == H_STATE_SHIFT) && (col == 0);
     assign OE = col == 0;  // Always display
 endmodule

@@ -82,6 +82,7 @@ int main() {
 		// Swap buffers
 		visible_buf = 1 - visible_buf;
 		hub75_select_buffer(visible_buf);
+		// delay_ms(50);
 
 
 		PARALLEL_IO_B[0] = 0x55;
