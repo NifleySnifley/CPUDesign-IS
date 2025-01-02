@@ -1,28 +1,43 @@
 {
   signal: [
-    ["host",
-      { name: "clk", wave:   "P....", data:[] },
-      { name: "addr", wave:  "x==x.", data:["addR","addW"] },
-      { name: "wdata", wave: "x.=x.", data:["datW"] },
-      
-      { name: "ren", wave:   "x10x.", data:[] },
-      { name: "wen", wave:   "x01x.", data:[] },
-
+    [
+      "host",
+      { name: "clk", wave: "P....", data: []
+      },
+      { name: "addr", wave: "x==x.", data: [
+          "addR",
+          "addW"
+        ]
+      },
+      { name: "wdata", wave: "x.=x.", data: [
+          "datW"
+        ]
+      },
+      { name: "ren", wave: "x10x.", data: []
+      },
+      { name: "wen", wave: "x01x.", data: []
+      },
     ],
-    ["device",
-      { name: "rdata", wave: "x.=x.", data:["datR"] },
-      { name: "done", wave:  "x.1.x", data:[] },
+    [
+      "device",
+      { name: "rdata", wave: "x.=x.", data: [
+          "datR"
+        ]
+      },
+      { name: "done", wave: "x.1.x", data: []
+      },
     ]
   ],
   head: {
     text: [
       'tspan',
-      ['tspan', {class:'h3'}, 'Write Cycle'],
+      ['tspan',
+        {class:'h3'
+        }, 'Read-Write Cycle'
+      ],
     ]
   },
 }
-
-
 /*{
   signal: [
     ["host",
